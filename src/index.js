@@ -71,23 +71,17 @@ locar.on("gpsupdate", ev => {
             colour: 0x00ff00
         }];
 
-        // use a flat plane instead of a box so the "方格" becomes a flat surface
-        const geom = new THREE.PlaneGeometry(10, 10);
+        const geom = new THREE.BoxGeometry(10,10,10);
 
         for(const boxProp of boxProps) {
             const mesh = new THREE.Mesh(
-                geom,
-                new THREE.MeshBasicMaterial({ color: boxProp.colour, side: THREE.DoubleSide })
+                geom, 
+                new THREE.MeshBasicMaterial({color: boxProp.colour})
             );
 
-            // rotate the plane so it lies horizontally (XZ plane) instead of vertical (XY)
-            mesh.rotation.x = -Math.PI / 2;
-            
-            mesh.position.y = -5;
-            
             locar.add(
-                mesh,
-                ev.position.coords.longitude + boxProp.lonDis,
+                mesh, 
+                ev.position.coords.longitude + boxProp.lonDis, 
                 ev.position.coords.latitude + boxProp.latDis
             );
         }
