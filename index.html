@@ -1,8 +1,7 @@
-<!DOCTYPE html><!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
 <script src="//cdn.jsdelivr.net/npm/eruda"></script>
-<script type='module' src="src/index.js"></script>
 <script>eruda.init();</script>
 <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, minimum-scale=1, maximum-scale=1" />
 <title>LocAR.js example 2</title>
@@ -18,12 +17,10 @@
 
 <canvas id="glscene"></canvas>
 
-<!-- Defensive status elements: some libs or code paths may try to set textContent -->
-<div id="locarStatus" style="display:none"></div>
-<div id="gpsStatus" style="display:none"></div>
-  
+<!-- Status display for debugging grid (made visible) -->
+<div id="locarStatus" style="position:fixed;left:8px;top:8px;padding:6px;background:rgba(0,0,0,0.5);color:#fff;font-size:12px;z-index:9999"></div>
+<div id="gpsStatus" style="position:fixed;left:8px;top:56px;padding:6px;background:rgba(0,0,0,0.5);color:#fff;font-size:12px;z-index:9999"></div>
+
 </main>
 </body>
 </html>
-
-
