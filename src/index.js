@@ -49,123 +49,49 @@ locar.on("gpserror", error => {
     alert(`GPS error: ${error.code}`);
 });
 
-// Grid configuration (deg). Approx: 0.00001° ≈ 1.11m latitude
-const GRID_SPACING_DEG = 0.0001; // spacing between grid squares in degrees
-const GRID_RADIUS_STEPS = 1; // how many steps out from user's position (2 => 5x5 grid)
-const KEY_DECIMALS = 6; // decimals for map keys
-
-// Store created grid meshes keyed by 'lon_lat'
-const gridMap = new Map();
-let lastGridCenter = null; // {lon, lat}
-
-// Make a thin, flat box so it lies parallel to the ground.
-// BoxGeometry(width, height, depth) -> keep height very small so it's flat.
-const boxGeom = new THREE.BoxGeometry(2, 0.2, 2);
-
-function makeBoxMesh(colour=0x00ff00) {
-    const mat = new THREE.MeshBasicMaterial({color: colour});
-    const mesh = new THREE.Mesh(boxGeom, mat);
-    // Rotate so the flat face is horizontal (if locar uses a different up-axis this ensures flatness)
-    mesh.rotation.x = -Math.PI / 2;
-    // lift slightly so it sits on top of the ground plane (half of height)
-    mesh.position.y = 0.1;
-    return mesh;
-}
-
-function keyFor(lon, lat) {
-    return `${lon.toFixed(KEY_DECIMALS)}|${lat.toFixed(KEY_DECIMALS)}`;
-}
-
-function updateStatus() {
-    const status = document.getElementById('locarStatus');
-    const gpsStatus = document.getElementById('gpsStatus');
-    status.innerText = `Grid squares: ${gridMap.size}`;
-    if(lastGridCenter) {
-        gpsStatus.innerText = `Center: ${lastGridCenter.lon.toFixed(6)}, ${lastGridCenter.lat.toFixed(6)}`;
-    }
-}
-
-function removeGridKey(key) {
-    const entry = gridMap.get(key);
-    if(!entry) return;
-    try {
-        // remove from scene
-        scene.remove(entry.mesh);
-        // if locar attached any references, try to remove by calling locar.remove if available
-        if(typeof locar.remove === 'function') {
-            try { locar.remove(entry.mesh); } catch(e) {}
-        }
-        // dispose material (we created per-mesh materials) but DO NOT dispose the shared geometry
-        if(entry.mesh.material) {
-            try { entry.mesh.material.dispose?.(); } catch(e) {}
-        }
-    } catch(e) {
-        // ignore cleanup errors
-    }
-    gridMap.delete(key);
-}
-
-function buildGridAround(lonCenter, latCenter) {
-    // compute integer steps and create needed meshes
-    const newKeys = new Set();
-
-    for(let i = -GRID_RADIUS_STEPS; i <= GRID_RADIUS_STEPS; i++) {
-        for(let j = -GRID_RADIUS_STEPS; j <= GRID_RADIUS_STEPS; j++) {
-            const lon = lonCenter + (i * GRID_SPACING_DEG);
-            const lat = latCenter + (j * GRID_SPACING_DEG);
-            const key = keyFor(lon, lat);
-            newKeys.add(key);
-            if(!gridMap.has(key)) {
-                const colour = 0x0077ff + ((i+j) & 1 ? 0x003300 : 0x000000);
-                const mesh = makeBoxMesh(colour);
-                try {
-                    locar.add(mesh, lon, lat);
-                } catch(e) {
-                    // fallback: position manually and add to scene
-                    mesh.position.set(0,0,0);
-                    scene.add(mesh);
-                }
-                gridMap.set(key, {mesh, lon, lat});
-            }
-        }
-    }
-
-    // remove keys not in newKeys
-    for(const key of Array.from(gridMap.keys())) {
-        if(!newKeys.has(key)) {
-            removeGridKey(key);
-        }
-    }
-
-    lastGridCenter = {lon: lonCenter, lat: latCenter};
-    updateStatus();
-}
-
-// Helper: small distance check (in degrees)
-function movedEnough(oldPos, newPos) {
-    if(!oldPos) return true;
-    const dLon = Math.abs(oldPos.lon - newPos.lon);
-    const dLat = Math.abs(oldPos.lat - newPos.lat);
-    return (dLon > (GRID_SPACING_DEG/2) || dLat > (GRID_SPACING_DEG/2));
-}
-
 locar.on("gpsupdate", ev => {
-    const lon = ev.position.coords.longitude;
-    const lat = ev.position.coords.latitude;
-
-    // show a toast for the very first GPS fix
     if(firstLocation) {
-        alert(`Got the initial location: longitude ${lon}, latitude ${lat}`);
+        alert(`Got the initial location: longitude ${ev.position.coords.longitude}, latitude ${ev.position.coords.latitude}`);
+
+        const boxProps = [{
+            latDis: 0.0005,
+            lonDis: 0,
+            colour: 0xff0000
+        }, {
+            latDis: -0.0005,
+            lonDis: 0,
+            colour: 0xffff00
+        }, {
+            latDis: 0,
+            lonDis: -0.0005,
+            colour: 0x00ffff
+        }, {
+            latDis: 0,
+            lonDis: 0.0005,
+            colour: 0x00ff00
+        }];
+
+        // use a flat plane instead of a box so the "方格" becomes a flat surface
+        const geom = new THREE.PlaneGeometry(10, 10);
+
+        for(const boxProp of boxProps) {
+            const mesh = new THREE.Mesh(
+                geom,
+                new THREE.MeshBasicMaterial({ color: boxProp.colour, side: THREE.DoubleSide })
+            );
+
+            // rotate the plane so it lies horizontally (XZ plane) instead of vertical (XY)
+            mesh.rotation.x = -Math.PI / 2;
+
+            locar.add(
+                mesh,
+                ev.position.coords.longitude + boxProp.lonDis,
+                ev.position.coords.latitude + boxProp.latDis
+            );
+        }
+        
         firstLocation = false;
     }
-
-    const center = {lon, lat};
-    if(!movedEnough(lastGridCenter, center)) {
-        // skip expensive grid rebuild if user hasn't moved beyond threshold
-        return;
-    }
-
-    buildGridAround(lon, lat);
 });
 
 locar.startGps();
