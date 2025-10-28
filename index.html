@@ -3,23 +3,32 @@
 <head>
 <script type='module' src='src/index.js'></script>
 <script src="//cdn.jsdelivr.net/npm/eruda"></script>
+<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
 <script>eruda.init();</script>
 <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, minimum-scale=1, maximum-scale=1" />
 <title>LocAR.js example 2</title>
 </head>
 <body>
 <main>
+<body style='margin : 0px; overflow: hidden;'>
 
-<div id="gpsinput">
-<div><input id="fakeLat" placeholder="Fake Lat" /></div>
-<div><input id="fakeLon" placeholder="Fake Lon"/></div>
-<div><button id="setFakeLoc">Set Fake Location!</button></div>
-</div>
+    <a-scene 
+        vr-mode-ui="enabled: false" 
+        arjs='sourceType: webcam; videoTexture: true; debugUIEnabled: false;'
+    >
+        <a-camera 
+            gps-new-camera 
+            rotation-reader 
+            dynamic-grid 
+        ></a-camera>
+        
+    </a-scene>
 
-<canvas id="glscene"></canvas>
-
+</body>
 </main>
 </body>
 </html>
+
 
 
