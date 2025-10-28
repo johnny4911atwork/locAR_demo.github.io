@@ -82,7 +82,9 @@ locar.on("gpsupdate", ev => {
 
             // rotate the plane so it lies horizontally (XZ plane) instead of vertical (XY)
             mesh.rotation.x = -Math.PI / 2;
-
+            
+            mesh.position.y = -5;
+            
             locar.add(
                 mesh,
                 ev.position.coords.longitude + boxProp.lonDis,
