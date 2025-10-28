@@ -50,21 +50,26 @@ locar.on("gpserror", error => {
 });
 
 // Grid configuration (deg). Approx: 0.00001° ≈ 1.11m latitude
-const GRID_SPACING_DEG = 0.00001; // spacing between grid squares in degrees
-const GRID_RADIUS_STEPS = 2; // how many steps out from user's position (2 => 5x5 grid)
+const GRID_SPACING_DEG = 0.0001; // spacing between grid squares in degrees
+const GRID_RADIUS_STEPS = 1; // how many steps out from user's position (2 => 5x5 grid)
 const KEY_DECIMALS = 6; // decimals for map keys
 
 // Store created grid meshes keyed by 'lon_lat'
 const gridMap = new Map();
 let lastGridCenter = null; // {lon, lat}
 
-const boxGeom = new THREE.BoxGeometry(10,10,2);
+// Make a thin, flat box so it lies parallel to the ground.
+// BoxGeometry(width, height, depth) -> keep height very small so it's flat.
+const boxGeom = new THREE.BoxGeometry(2, 0.2, 2);
 
 function makeBoxMesh(colour=0x00ff00) {
-    return new THREE.Mesh(
-        boxGeom,
-        new THREE.MeshBasicMaterial({color: colour})
-    );
+    const mat = new THREE.MeshBasicMaterial({color: colour});
+    const mesh = new THREE.Mesh(boxGeom, mat);
+    // Rotate so the flat face is horizontal (if locar uses a different up-axis this ensures flatness)
+    mesh.rotation.x = -Math.PI / 2;
+    // lift slightly so it sits on top of the ground plane (half of height)
+    mesh.position.y = 0.1;
+    return mesh;
 }
 
 function keyFor(lon, lat) {
@@ -90,9 +95,10 @@ function removeGridKey(key) {
         if(typeof locar.remove === 'function') {
             try { locar.remove(entry.mesh); } catch(e) {}
         }
-        // dispose geometry/material if not shared
-        if(entry.mesh.geometry) entry.mesh.geometry.dispose?.();
-        if(entry.mesh.material) entry.mesh.material.dispose?.();
+        // dispose material (we created per-mesh materials) but DO NOT dispose the shared geometry
+        if(entry.mesh.material) {
+            try { entry.mesh.material.dispose?.(); } catch(e) {}
+        }
     } catch(e) {
         // ignore cleanup errors
     }
