@@ -32,86 +32,97 @@ window.addEventListener("resize", ev => {
 });
 
 let firstLocation = true;
-// 用來管理會跟著使用者移動的 local objects
-const localFollowers = [];
-// 除錯開關：若為 true，followers 會用 BoxGeometry 並放大/抬高以便在測試時容易看到
-const FOLLOWER_DEBUG = true;
 
-// 產生 n 個在使用者附近的小物件（以緯經度偏移表示）
-function createLocalFollowers(lon, lat, n = 8, radiusMeters = 3) {
-    // 約略將公尺轉為緯經度差（在赤道附近）：1 度 ≈ 111320 m
-    const meterToDeg = 1 / 111320;
-
-    const geom = FOLLOWER_DEBUG ? new THREE.BoxGeometry(0.4, 0.4, 0.4) : new THREE.PlaneGeometry(0.5, 0.5);
-
-    for (let i = 0; i < n; i++) {
-        const angle = (i / n) * Math.PI * 2;
-        const dx = Math.cos(angle) * radiusMeters; // 公尺
-        const dy = Math.sin(angle) * radiusMeters; // 公尺
-
-        const follower = new THREE.Mesh(
-            geom,
-            new THREE.MeshBasicMaterial({ color: 0x66ccff, side: THREE.DoubleSide })
-        );
-        follower.rotation.x = -Math.PI / 2; // 平面水平
-        if (FOLLOWER_DEBUG) {
-            // 抬高並微調旋轉，讓 box 在視線中更容易看到
-            follower.position.y = 0.4;
-            follower.rotation.x = 0; // 盒子不需要水平旋轉
-        }
-
-        // 計算偏移後的緯經度
-        const lonOffset = dx * meterToDeg / Math.cos(lat * Math.PI / 180);
-        const latOffset = dy * meterToDeg;
-
-        const targetLon = lon + lonOffset;
-        const targetLat = lat + latOffset;
-
-        // 把 follower 加入 locar，並把參考存下來
-        locar.add(follower, targetLon, targetLat);
-        localFollowers.push({ mesh: follower, lonOffset, latOffset });
+// GridManager: 在使用者周圍建立並維護 NxN 的格子（每格以 meters 為單位）
+class GridManager {
+    constructor(locar, scene, opts = {}) {
+        this.locar = locar;
+        this.scene = scene;
+        this.gridSize = opts.gridSize || 3; // 必須為奇數，像 3,5
+        if (this.gridSize % 2 === 0) this.gridSize += 1;
+        this.cellSize = opts.cellSize || 5; // 每格大約幾公尺 (視視覺大小)
+        this.cells = new Map(); // key: `${r}_${c}` => mesh
+        this.lastCenter = null; // {lon, lat}
+        // 共用 geometry (平面) — 旋轉為水平
+        this.geom = new THREE.PlaneGeometry(this.cellSize, this.cellSize);
+        this.geom.rotateX(-Math.PI / 2);
     }
-    console.log(`createLocalFollowers: created ${localFollowers.length} followers (debug=${FOLLOWER_DEBUG})`);
-}
 
-// 重新定位所有 followers（當使用者位置改變或需要重新對齊時呼叫）
-function updateLocalFollowers(originLon, originLat) {
-    for (const f of localFollowers) {
-        const lon = originLon + f.lonOffset;
-        const lat = originLat + f.latOffset;
-        // 嘗試使用 locar 的移除（如果有），否則從 scene 移除，再用 locar.add 重新加入以更新位置
-        try {
-            if (typeof locar.remove === 'function') {
-                locar.remove(f.mesh);
-            } else {
-                scene.remove(f.mesh);
+    // 大略把公尺轉成緯度度數
+    metersToLat(m) {
+        return m / 111320; // 平均值
+    }
+
+    // 大略把公尺轉成經度度數，需傳入參考緯度
+    metersToLon(m, lat) {
+        return m / (111320 * Math.cos(lat * Math.PI / 180));
+    }
+
+    // 產生一個可加入到 locar 的 mesh
+    makeMesh(r, c) {
+        const colour = 0x888888 + Math.floor(Math.random() * 0x777777);
+        const mat = new THREE.MeshBasicMaterial({ color: colour, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+        const mesh = new THREE.Mesh(this.geom, mat);
+        mesh.userData.grid = { r, c };
+        return mesh;
+    }
+
+    // 更新格子中心位置 (centerLon, centerLat)
+    update(centerLon, centerLat) {
+        // 以中心緯度計算經度度數轉換
+        const cellLatDeg = this.metersToLat(this.cellSize);
+        const cellLonDeg = this.metersToLon(this.cellSize, centerLat);
+
+        const half = Math.floor(this.gridSize / 2);
+        const needed = new Set();
+
+        for (let r = -half; r <= half; r++) {
+            for (let c = -half; c <= half; c++) {
+                const lat = centerLat + r * cellLatDeg;
+                const lon = centerLon + c * cellLonDeg;
+                const key = `${r}_${c}`;
+                needed.add(key);
+                if (!this.cells.has(key)) {
+                    const mesh = this.makeMesh(r, c);
+                    // 使用 locar.add 以便讓物件跟隨地理座標定位
+                    this.locar.add(mesh, lon, lat);
+                    this.cells.set(key, { mesh, lon, lat });
+                } else {
+                    // 可選：如果需要更新已有 mesh 的位置（通常不需）
+                }
             }
-        } catch (e) {
-            // ignore
-            scene.remove(f.mesh);
         }
 
-        // 重新加入到 locar（locar 會處理 lat/lon -> world 轉換）
-        if (typeof locar.add === 'function') {
-            locar.add(f.mesh, lon, lat);
+        // 移除不再需要的 cell
+        for (const [key, val] of this.cells) {
+            if (!needed.has(key)) {
+                const mesh = val.mesh;
+                // 從 scene/locar 移除並釋放資源
+                try { this.scene.remove(mesh); } catch (e) { /* ignore */ }
+                if (mesh.geometry) mesh.geometry.dispose();
+                if (mesh.material) {
+                    if (Array.isArray(mesh.material)) {
+                        mesh.material.forEach(m => m.dispose());
+                    } else {
+                        mesh.material.dispose();
+                    }
+                }
+                this.cells.delete(key);
+            }
         }
+
+        this.lastCenter = { lon: centerLon, lat: centerLat };
     }
-}
 
-// 移除特定 follower（傳入 mesh 或索引）
-function removeLocalFollower(target) {
-    let idx = -1;
-    if (typeof target === 'number') idx = target;
-    else idx = localFollowers.findIndex(f => f.mesh === target);
-
-    if (idx >= 0 && idx < localFollowers.length) {
-        const f = localFollowers[idx];
-        // 先從 scene 移除
-        scene.remove(f.mesh);
-        // 釋放資源
-        if (f.mesh.geometry) f.mesh.geometry.dispose?.();
-        if (f.mesh.material) f.mesh.material.dispose?.();
-        localFollowers.splice(idx, 1);
+    clear() {
+        for (const [key, val] of this.cells) {
+            const mesh = val.mesh;
+            try { this.scene.remove(mesh); } catch (e) {}
+            if (mesh.geometry) mesh.geometry.dispose();
+            if (mesh.material) mesh.material.dispose();
+        }
+        this.cells.clear();
+        this.lastCenter = null;
     }
 }
 
@@ -132,53 +143,40 @@ locar.on("gpserror", error => {
 });
 
 locar.on("gpsupdate", ev => {
-    if(firstLocation) {
+    // 使用 GridManager 在使用者周圍建立 NxN 的格子，並在後續移動時更新
+    if (firstLocation) {
         alert(`Got the initial location: longitude ${ev.position.coords.longitude}, latitude ${ev.position.coords.latitude}`);
 
-        const boxProps = [{
-            latDis: 0.0005,
-            lonDis: 0,
-            colour: 0xff0000
-        }, {
-            latDis: -0.0005,
-            lonDis: 0,
-            colour: 0xffff00
-        }, {
-            latDis: 0,
-            lonDis: -0.0005,
-            colour: 0x00ffff
-        }, {
-            latDis: 0,
-            lonDis: 0.0005,
-            colour: 0x00ff00
-        }];
+        // 可調參數：gridSize (3 => 3x3, 5 => 5x5), cellSize (公尺)
+        window._gridManager = new GridManager(locar, scene, { gridSize: 3, cellSize: 5 });
+        window._gridManager.update(ev.position.coords.longitude, ev.position.coords.latitude);
 
-        const geom = new THREE.BoxGeometry(10,10,10);
-
-        for(const boxProp of boxProps) {
-            const mesh = new THREE.Mesh(
-                geom, 
-                new THREE.MeshBasicMaterial({color: boxProp.colour})
-            );
-
-            locar.add(
-                mesh, 
-                ev.position.coords.longitude + boxProp.lonDis, 
-                ev.position.coords.latitude + boxProp.latDis
-            );
-        }
-
-        // 建立靠近使用者的小型跟隨物件（例：8 個、半徑 3 公尺）
-        createLocalFollowers(ev.position.coords.longitude, ev.position.coords.latitude, 8, 3);
-        console.log('Initial followers created:', localFollowers.length);
-        
         firstLocation = false;
+        return;
     }
-    // 每次 gps 更新都嘗試把 followers 重新對齊到使用者附近
-    if (localFollowers.length > 0) {
-        updateLocalFollowers(ev.position.coords.longitude, ev.position.coords.latitude);
+
+    // 後續 GPS 更新 — 若移動超過一格一半（或中心改變）則更新格子
+    if (window._gridManager && window._gridManager.lastCenter) {
+        const last = window._gridManager.lastCenter;
+        const moved = distanceMeters(last.lat, last.lon, ev.position.coords.latitude, ev.position.coords.longitude);
+        if (moved > (window._gridManager.cellSize / 2)) {
+            window._gridManager.update(ev.position.coords.longitude, ev.position.coords.latitude);
+        }
     }
 });
+
+// 計算兩個經緯度之間的距離（公尺），簡單 haversine
+function distanceMeters(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // m
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
 
 locar.startGps();
 
