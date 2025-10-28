@@ -44,14 +44,12 @@ deviceOrientationControls.on("deviceorientationerror", error => {
 
 deviceOrientationControls.init();
 
-// --- 修改 ---
-// 1. 不再需要 gridGroup
-// scene.add(gridGroup); // <- 移除
+// --- 關鍵點：不再需要這個陣列，我們直接操作 locar.children ---
+// let currentGridMeshes = []; 
+// ----------------------------------------------------
 
-// 2. 定義網格方塊的幾何體 (平面) 和材質 (保持不變)
 const gridGeom = new THREE.PlaneGeometry(2, 2);
 const gridMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff, side: THREE.DoubleSide });
-// ----------------
 
 locar.on("gpserror", error => {
     alert(`GPS error: ${error.code}`);
@@ -63,13 +61,20 @@ locar.on("gpsupdate", ev => {
         firstLocation = false;
     }
 
-    // --- 重大修改 ---
-    // 您的核心需求：持續追蹤並更新網格
+    // --- 最終解決方案：直接遍歷並移除 locar 的子物件 ---
+    // 1. 儲存所有子物件的參考
+    const childrenToRemove = [...locar.children];
 
-    // 1. 移除所有舊的方格 (實現「脫離範圍自動消失」)
-    // LocAR.LocationBased 繼承自 THREE.Group，所以我們可以直接呼叫 clear()
-    locar.clear(); 
-    // -----------------
+    // 2. 遍歷並使用標準的 THREE.Group.remove() 機制
+    for (const mesh of childrenToRemove) {
+        // 從 locar (THREE.Group) 移除子物件
+        locar.remove(mesh); 
+        
+        // 釋放 Three.js 資源 (可選，但推薦)
+        if (mesh.geometry) mesh.geometry.dispose();
+        if (mesh.material) mesh.material.dispose();
+    }
+    // --------------------------------------------------------
 
     // 2. 獲取目前位置
     const coords = ev.position.coords;
@@ -78,7 +83,7 @@ locar.on("gpsupdate", ev => {
 
     // 3. 定義新網格的參數
     const gridDimension = 7;
-    const gridSpacing = 0.00002; // ~2.2 公尺
+    const gridSpacing = 0.00002;
     const halfGrid = Math.floor(gridDimension / 2);
 
     // 4. 建立並放置新的方格
@@ -93,18 +98,19 @@ locar.on("gpsupdate", ev => {
             const latDis = j * gridSpacing;
 
             const mesh = new THREE.Mesh(gridGeom, gridMaterial);
+            
+            // 讓方格平躺在地面上
+            mesh.rotation.x = -Math.PI / 2; 
 
             // 使用 locar.add 將方格添加到 LocAR 系統
+            // 由於 locar 是一個 THREE.Group 延伸，locar.add 其實就是 group.add
             locar.add(
                 mesh,
                 currentLon + lonDis,
                 currentLat + latDis
             );
-
-            // --- 修改 ---
-            // 5. 不再需要 gridGroup.add(mesh)
-            // gridGroup.add(mesh); // <- 移除
-            // -----------------
+            
+            // --- 不再需要將 mesh 加入追蹤陣列 ---
         }
     }
 });
