@@ -67,8 +67,14 @@ locar.on("gpsupdate", ev => {
     // Keep maps of active grid cells -> mesh
     if(typeof window.__locarGrid === 'undefined') {
         window.__locarGrid = new Map();
-        // shared geometry to reduce allocations
-        window.__locarGridGeom = new THREE.BoxGeometry(6,6,6);
+        // shared geometry to reduce allocations (enlarged for visibility)
+        window.__locarGridGeom = new THREE.BoxGeometry(40,40,40);
+        // add a light so MeshLambertMaterial is visible
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(0, 1, 1);
+        scene.add(dirLight);
+        const amb = new THREE.AmbientLight(0x404040);
+        scene.add(amb);
     }
 
     const grid = window.__locarGrid;
@@ -93,7 +99,7 @@ locar.on("gpsupdate", ev => {
 
                 const mesh = new THREE.Mesh(
                     geom,
-                    new THREE.MeshBasicMaterial({ color })
+                    new THREE.MeshLambertMaterial({ color })
                 );
 
                 // Add the mesh at the geo coordinate using locar so it is positioned correctly
@@ -126,6 +132,20 @@ locar.on("gpsupdate", ev => {
             }
             grid.delete(key);
         }
+    }
+    // Debug logging and status update
+    try{
+        console.log('gpsupdate center', centerLon, centerLat, 'cells', grid.size);
+        const statusEl = document.getElementById('locarStatus');
+        if(statusEl){
+            statusEl.textContent = `Center: ${centerLon.toFixed(6)}, ${centerLat.toFixed(6)} | Cells: ${grid.size}`;
+        }
+        const gpsEl = document.getElementById('gpsStatus');
+        if(gpsEl){
+            gpsEl.textContent = `cellSize: ${cellSize}, gridRadius: ${gridRadius}`;
+        }
+    }catch(e){
+        // ignore status updates if DOM not available
     }
 });
 
