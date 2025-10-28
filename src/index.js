@@ -49,112 +49,117 @@ locar.on("gpserror", error => {
     alert(`GPS error: ${error.code}`);
 });
 
-// Grid management: track added cells so we can remove ones that fall outside the radius
-const gridMap = new Map(); // key -> { mesh, lon, lat }
+// Grid configuration (deg). Approx: 0.00001° ≈ 1.11m latitude
+const GRID_SPACING_DEG = 0.00001; // spacing between grid squares in degrees
+const GRID_RADIUS_STEPS = 2; // how many steps out from user's position (2 => 5x5 grid)
+const KEY_DECIMALS = 6; // decimals for map keys
 
-// configuration: cell size in degrees and radius in cells
-const cellSize = 0.00001; // ~1.11m in latitude (approx), adjust as needed
-const radiusCells = 1; // will produce a (2*radiusCells+1)^2 grid around user
+// Store created grid meshes keyed by 'lon_lat'
+const gridMap = new Map();
+let lastGridCenter = null; // {lon, lat}
 
-const boxGeom = new THREE.BoxGeometry(10,10,10);
+const boxGeom = new THREE.BoxGeometry(10,10,2);
 
-function cellKey(lon, lat) {
-    // round to avoid floating point noise
-    return `${lon.toFixed(8)}_${lat.toFixed(8)}`;
-}
-
-function colourForOffset(dx, dy) {
-    // simple deterministic color mapping per direction
-    if(dx === 0 && dy === 0) return 0x888888; // center grey
-    if(dx > 0 && dy === 0) return 0x00ff00; // east green
-    if(dx < 0 && dy === 0) return 0xffff00; // west yellow
-    if(dx === 0 && dy > 0) return 0xff0000; // north red
-    if(dx === 0 && dy < 0) return 0x00ffff; // south cyan
-    // diagonal
-    return 0xffffff - ((dx + radiusCells) * 0x111111) - ((dy + radiusCells) * 0x010101);
-}
-
-function addCell(lon, lat, dx, dy) {
-    const key = cellKey(lon, lat);
-    if(gridMap.has(key)) return; // already added
-
-    const mesh = new THREE.Mesh(
+function makeBoxMesh(colour=0x00ff00) {
+    return new THREE.Mesh(
         boxGeom,
-        new THREE.MeshBasicMaterial({ color: colourForOffset(dx, dy) })
+        new THREE.MeshBasicMaterial({color: colour})
     );
-
-    // register with locar so it will position the mesh according to lat/lon
-    try {
-        locar.add(mesh, lon, lat);
-    } catch (e) {
-        // if locar.add throws or isn't available, still add to scene as fallback
-        scene.add(mesh);
-    }
-
-    gridMap.set(key, { mesh, lon, lat });
 }
 
-function removeCell(key) {
-    const rec = gridMap.get(key);
-    if(!rec) return;
+function keyFor(lon, lat) {
+    return `${lon.toFixed(KEY_DECIMALS)}|${lat.toFixed(KEY_DECIMALS)}`;
+}
 
-    const { mesh } = rec;
-
-    // attempt to remove from locar first if supported
-    try {
-        if(typeof locar.remove === 'function') {
-            locar.remove(mesh);
-        }
-    } catch (e) {
-        // ignore
+function updateStatus() {
+    const status = document.getElementById('locarStatus');
+    const gpsStatus = document.getElementById('gpsStatus');
+    status.innerText = `Grid squares: ${gridMap.size}`;
+    if(lastGridCenter) {
+        gpsStatus.innerText = `Center: ${lastGridCenter.lon.toFixed(6)}, ${lastGridCenter.lat.toFixed(6)}`;
     }
+}
 
-    // also remove from three scene to be safe
+function removeGridKey(key) {
+    const entry = gridMap.get(key);
+    if(!entry) return;
     try {
-        scene.remove(mesh);
-    } catch (e) {}
-
-    // dispose geometry/material where possible
-    try { mesh.geometry.dispose(); } catch(e) {}
-    try { mesh.material.dispose(); } catch(e) {}
-
+        // remove from scene
+        scene.remove(entry.mesh);
+        // if locar attached any references, try to remove by calling locar.remove if available
+        if(typeof locar.remove === 'function') {
+            try { locar.remove(entry.mesh); } catch(e) {}
+        }
+        // dispose geometry/material if not shared
+        if(entry.mesh.geometry) entry.mesh.geometry.dispose?.();
+        if(entry.mesh.material) entry.mesh.material.dispose?.();
+    } catch(e) {
+        // ignore cleanup errors
+    }
     gridMap.delete(key);
 }
 
-function updateGrid(centerLon, centerLat) {
-    const wanted = new Set();
+function buildGridAround(lonCenter, latCenter) {
+    // compute integer steps and create needed meshes
+    const newKeys = new Set();
 
-    for(let dx = -radiusCells; dx <= radiusCells; dx++) {
-        for(let dy = -radiusCells; dy <= radiusCells; dy++) {
-            const lon = centerLon + dx * cellSize;
-            const lat = centerLat + dy * cellSize;
-            const key = cellKey(lon, lat);
-            wanted.add(key);
+    for(let i = -GRID_RADIUS_STEPS; i <= GRID_RADIUS_STEPS; i++) {
+        for(let j = -GRID_RADIUS_STEPS; j <= GRID_RADIUS_STEPS; j++) {
+            const lon = lonCenter + (i * GRID_SPACING_DEG);
+            const lat = latCenter + (j * GRID_SPACING_DEG);
+            const key = keyFor(lon, lat);
+            newKeys.add(key);
             if(!gridMap.has(key)) {
-                addCell(lon, lat, dx, dy);
+                const colour = 0x0077ff + ((i+j) & 1 ? 0x003300 : 0x000000);
+                const mesh = makeBoxMesh(colour);
+                try {
+                    locar.add(mesh, lon, lat);
+                } catch(e) {
+                    // fallback: position manually and add to scene
+                    mesh.position.set(0,0,0);
+                    scene.add(mesh);
+                }
+                gridMap.set(key, {mesh, lon, lat});
             }
         }
     }
 
-    // remove any cells not in wanted set
+    // remove keys not in newKeys
     for(const key of Array.from(gridMap.keys())) {
-        if(!wanted.has(key)) {
-            removeCell(key);
+        if(!newKeys.has(key)) {
+            removeGridKey(key);
         }
     }
+
+    lastGridCenter = {lon: lonCenter, lat: latCenter};
+    updateStatus();
+}
+
+// Helper: small distance check (in degrees)
+function movedEnough(oldPos, newPos) {
+    if(!oldPos) return true;
+    const dLon = Math.abs(oldPos.lon - newPos.lon);
+    const dLat = Math.abs(oldPos.lat - newPos.lat);
+    return (dLon > (GRID_SPACING_DEG/2) || dLat > (GRID_SPACING_DEG/2));
 }
 
 locar.on("gpsupdate", ev => {
     const lon = ev.position.coords.longitude;
     const lat = ev.position.coords.latitude;
 
+    // show a toast for the very first GPS fix
     if(firstLocation) {
         alert(`Got the initial location: longitude ${lon}, latitude ${lat}`);
         firstLocation = false;
     }
 
-    // update grid around the user's current location
-    updateGrid(lon, lat);
+    const center = {lon, lat};
+    if(!movedEnough(lastGridCenter, center)) {
+        // skip expensive grid rebuild if user hasn't moved beyond threshold
+        return;
+    }
+
+    buildGridAround(lon, lat);
 });
 
 locar.startGps();
