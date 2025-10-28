@@ -1,23 +1,536 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
-<script type='module' src='src/index.js'></script>
-<script src="//cdn.jsdelivr.net/npm/eruda"></script>
-<script>eruda.init();</script>
-<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, minimum-scale=1, maximum-scale=1" />
-<title>LocAR.js example 2</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR 訊號強度檢測器</title>
+    <link rel="stylesheet" href="codepen.css">
 </head>
 <body>
-<main>
+    <!-- 靜態 fallback 按鈕：在極端情況下確保手機能看到啟動按鈕（預設隱藏，由 CSS 在 mobile-await-ar 顯示） -->
+    <button id="mobileStartARFallback" style="display:none;">🚀 啟動 AR</button>
+    <!-- 手機相機影片（location-based AR fallback） -->
+    <video id="arVideo" autoplay playsinline muted style="display:none;position:fixed;left:0;top:0;width:100%;height:100%;object-fit:cover;z-index:0;">
+        您的瀏覽器不支援影片播放。
+    </video>
+    <!-- A-Frame + AR.js location-based scene（預設隱藏，由 JS 控制顯示） -->
+    <a-scene id="aframeScene" vr-mode-ui="enabled: false" embedded arjs="sourceType: webcam; debugUIEnabled: false" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:10020;">
+        <!-- gps-camera 會自動請求 geolocation 權限 -->
+        <a-entity gps-camera rotation-reader></a-entity>
+        <a-entity id="aGridRoot"></a-entity>
+    </a-scene>
+    <div id="loading">
+        <div class="spinner"></div>
+        <div>正在初始化 AR 環境...</div>
+        <div id="loadingDetails" style="margin-top: 15px; font-size: 14px; color: rgba(255,255,255,0.7); font-weight: 500;">載入 Three.js...</div>
+    </div>
 
-<div id="gpsinput">
-<div><input id="fakeLat" placeholder="Fake Lat" /></div>
-<div><input id="fakeLon" placeholder="Fake Lon"/></div>
-<div><button id="setFakeLoc">Set Fake Location!</button></div>
-</div>
+    <div id="info" class="glass-card">
+        <h3>🛰️ AR 訊號強度檢測器</h3>
+        <div id="status">正在啟動系統...</div>
+        <div id="location">📍 位置: 偵測中...</div>
+        <div id="mode">🖥️ 模式: 桌面模式</div>
+        <div id="debug" style="margin-top: 12px; font-size: 11px; color: rgba(255,255,255,0.6);"></div>
+    </div>
 
-<canvas id="glscene"></canvas>
+    <div id="legend" class="glass-card">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+            <h4 style="margin:0; font-size:16px;">📶 訊號強度圖例</h4>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: linear-gradient(135deg, #ff0000 0%, #cc0000 100%);"></div>
+            <span>極強訊號 (80-100%)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: linear-gradient(135deg, #ff8000 0%, #ff6600 100%);"></div>
+            <span>強訊號 (50-80%)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: linear-gradient(135deg, #ffff00 0%, #ffcc00 100%);"></div>
+            <span>中等訊號 (25-50%)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: linear-gradient(135deg, #00ff40 0%, #00cc33 100%);"></div>
+            <span>弱訊號 (8-25%)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: linear-gradient(135deg, #0080ff 0%, #0066cc 100%);"></div>
+            <span>極弱訊號 (0-8%)</span>
+        </div>
+    </div>
 
-</main>
+    <div id="controls" class="glass-card">
+        <div class="button-group">
+            <button id="toggleAR" style="display:none;">🚀 啟動 AR</button>
+            <button id="resetView">🔄 重置視角</button>
+            <button id="toggleGrid">👁️ 隱藏網格</button>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+            <button id="collapseInfo" style="flex:1; padding:8px 10px; font-size:13px;">隱藏資訊</button>
+            <button id="collapseLegend" style="flex:1; padding:8px 10px; font-size:13px;">隱藏圖例</button>
+        </div>
+        <div class="control-hint">
+            <div class="control-hint-title">🎮 桌面模擬控制</div>
+            <div class="control-item">
+                <span class="control-key">⌨️ WASD</span>
+                <span>地面移動</span>
+            </div>
+            <div class="control-item">
+                <span class="control-key">🖱️ 滑鼠</span>
+                <span>轉動視角</span>
+            </div>
+            <div class="control-item">
+                <span class="control-key">⚡ Shift</span>
+                <span>快速移動</span>
+            </div>
+            <div style="margin-top: 12px; padding: 10px; background: rgba(255, 255, 255, 0.08); border-radius: 8px; font-size: 12px; color: rgba(255,255,255,0.8);">
+                <div>💡 網格顯示周圍訊號強度</div>
+                <div>📡 移動時即時更新數據</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="//cdn.jsdelivr.net/npm/eruda"></script>
+    <script>
+        eruda.init();
+    </script>
+
+    <!-- Three.js 和控制器 -->
+    <script>
+        // 立即強制隱藏啟動按鈕（防止在樣式/race condition 下一開始就顯示）
+        (function(){
+            try {
+                var b = document.getElementById('toggleAR');
+                if (b) b.style.setProperty('display', 'none', 'important');
+            } catch(e) { /* ignore */ }
+        })();
+    </script>
+    <!-- A-Frame & AR.js (aframe-ar.js includes a compatible THREE) -->
+    <script src="https://unpkg.com/aframe@1.4.2/dist/aframe.min.js"></script>
+    <script>
+        // 確保在載入 aframe-ar.js 前，若 A-Frame 已註冊 THREE，將其暴露為全域 THREE
+        try {
+            if (typeof THREE === 'undefined' && window.AFRAME && AFRAME.THREE) {
+                window.THREE = AFRAME.THREE;
+                console.log('已將 AFRAME.THREE 指派到 window.THREE (pre-aframe-ar)');
+            }
+        } catch (e) { /* ignore */ }
+    </script>
+    <script>
+        // 動態載入 aframe-ar.js：等到 A-Frame 與 AFRAME.THREE/AFRAME.registerComponent 準備好後再注入。
+        // 這可避免 aframe-ar.js 在全域 THREE 尚未就緒時執行而產生 "Cannot set properties of undefined" 等錯誤。
+        (function(){
+            const urls = [
+                'https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js',
+                'https://unpkg.com/ar.js@3.4.0/aframe/build/aframe-ar.js'
+            ];
+
+            function loadScript(url, timeout = 12000) {
+                return new Promise((resolve, reject) => {
+                    const s = document.createElement('script');
+                    let timer = null;
+                    s.src = url;
+                    s.async = true;
+                    s.onload = () => { if (timer) clearTimeout(timer); resolve(url); };
+                    s.onerror = (e) => { if (timer) clearTimeout(timer); reject(new Error('載入失敗: ' + url)); };
+                    timer = setTimeout(() => { s.onload = null; s.onerror = null; reject(new Error('載入逾時: ' + url)); }, timeout);
+                    document.head.appendChild(s);
+                });
+            }
+
+            function waitForAFRAME(timeout = 3000) {
+                return new Promise((resolve, reject) => {
+                    const start = Date.now();
+                    (function check(){
+                        if (window.AFRAME && (window.AFRAME.THREE || window.THREE) && typeof AFRAME.registerComponent === 'function') return resolve();
+                        if (Date.now() - start > timeout) return reject(new Error('AFRAME 未在指定時間內就緒'));
+                        setTimeout(check, 50);
+                    })();
+                });
+            }
+
+            // 等待 A-Frame 就緒，若就緒則確保 window.THREE 指向 AFRAME.THREE，然後載入 aframe-ar.js
+            waitForAFRAME(3000).then(() => {
+                try { if (typeof THREE === 'undefined' && window.AFRAME && AFRAME.THREE) window.THREE = AFRAME.THREE; } catch(e) { /* ignore */ }
+                (async () => {
+                    let loaded = false;
+                    for (const url of urls) {
+                        try {
+                            await loadScript(url);
+                            console.log('已載入 aframe-ar.js:', url);
+                            loaded = true;
+                            break;
+                        } catch (err) {
+                            console.warn('載入 aframe-ar.js 失敗，嘗試下一個來源:', url, err);
+                        }
+                    }
+                    if (!loaded) console.error('無法載入 aframe-ar.js，AR 功能可能受限');
+                })();
+            }).catch((err) => {
+                // 若 A-Frame 未在時間內就緒，仍嘗試載入一次（有時候網路延遲或資源順序不同）
+                console.warn('等待 A-Frame 就緒逾時，仍嘗試載入 aframe-ar.js:', err);
+                loadScript(urls[0]).then(() => console.log('已載入 aframe-ar.js (fallback)')).catch(e => console.error('aframe-ar.js fallback 載入失敗', e));
+            });
+        })();
+    </script>
+    <script>
+        // 更新載入狀態
+        function updateLoadingStatus(message) {
+            const element = document.getElementById('loadingDetails');
+            if (element) element.textContent = message;
+        }
+
+        // 再次保險性確保 THREE 全域可用（若 A-Frame 已載入則使用 AFRAME.THREE）
+        updateLoadingStatus('A-Frame 載入完成，正在設定控制器...');
+        try {
+            if (typeof THREE === 'undefined' && window.AFRAME && AFRAME.THREE) {
+                window.THREE = AFRAME.THREE;
+            }
+        } catch (e) { /* ignore */ }
+        console.log('Three.js available:', typeof THREE !== 'undefined');
+        
+        // 簡化版的軌道控制器
+        class SimpleOrbitControls {
+            constructor(camera, domElement) {
+                this.camera = camera;
+                this.domElement = domElement;
+                this.enableDamping = true;
+                this.dampingFactor = 0.05;
+                this.maxPolarAngle = Math.PI / 2;
+                
+                // 控制狀態
+                this.enabled = true;
+                this.target = new THREE.Vector3();
+                
+                // 球面座標
+                this.spherical = new THREE.Spherical();
+                this.sphericalDelta = new THREE.Spherical();
+                this.scale = 1;
+                this.panOffset = new THREE.Vector3();
+                
+                // 滑鼠狀態
+                this.rotateStart = new THREE.Vector2();
+                this.rotateEnd = new THREE.Vector2();
+                this.rotateDelta = new THREE.Vector2();
+                
+                this.isMouseDown = false;
+                this.mouseButton = -1;
+                
+                this.setupEventListeners();
+                this.update(); // 初始更新
+            }
+            
+            setupEventListeners() {
+                if (!this.domElement) return;
+                
+                this.domElement.addEventListener('mousedown', this.onMouseDown.bind(this));
+                this.domElement.addEventListener('mousemove', this.onMouseMove.bind(this));
+                this.domElement.addEventListener('mouseup', this.onMouseUp.bind(this));
+                this.domElement.addEventListener('wheel', this.onWheel.bind(this));
+                
+                // 防止右鍵菜單
+                this.domElement.addEventListener('contextmenu', (event) => {
+                    event.preventDefault();
+                });
+            }
+            
+            onMouseDown(event) {
+                if (!this.enabled) return;
+                
+                this.isMouseDown = true;
+                this.mouseButton = event.button;
+                
+                if (event.button === 0) { // 左鍵旋轉
+                    this.rotateStart.set(event.clientX, event.clientY);
+                }
+                
+                event.preventDefault();
+            }
+            
+            onMouseMove(event) {
+                if (!this.enabled || !this.isMouseDown) return;
+                
+                if (this.mouseButton === 0) { // 左鍵旋轉
+                    this.rotateEnd.set(event.clientX, event.clientY);
+                    this.rotateDelta.subVectors(this.rotateEnd, this.rotateStart);
+                    
+                    // 計算旋轉角度
+                    const element = this.domElement === document ? this.domElement.body : this.domElement;
+                    const rotateLeft = 2 * Math.PI * this.rotateDelta.x / element.clientWidth;
+                    const rotateUp = 2 * Math.PI * this.rotateDelta.y / element.clientHeight;
+                    
+                    this.sphericalDelta.theta -= rotateLeft;
+                    this.sphericalDelta.phi -= rotateUp;
+                    
+                    this.rotateStart.copy(this.rotateEnd);
+                }
+                
+                event.preventDefault();
+            }
+            
+            onMouseUp(event) {
+                this.isMouseDown = false;
+                this.mouseButton = -1;
+            }
+            
+            onWheel(event) {
+                if (!this.enabled) return;
+                
+                if (event.deltaY < 0) {
+                    this.scale /= 1.1;
+                } else {
+                    this.scale *= 1.1;
+                }
+                
+                // 限制縮放範圍
+                this.scale = Math.max(0.1, Math.min(10, this.scale));
+                
+                event.preventDefault();
+            }
+            
+            update() {
+                if (!this.enabled) return;
+                
+                const offset = new THREE.Vector3();
+                const position = this.camera.position;
+                
+                offset.copy(position).sub(this.target);
+                this.spherical.setFromVector3(offset);
+                
+                this.spherical.theta += this.sphericalDelta.theta;
+                this.spherical.phi += this.sphericalDelta.phi;
+                
+                // 限制仰角
+                this.spherical.phi = Math.max(0.000001, Math.min(this.maxPolarAngle, this.spherical.phi));
+                this.spherical.radius *= this.scale;
+                
+                // 限制距離
+                this.spherical.radius = Math.max(0.1, Math.min(100, this.spherical.radius));
+                
+                offset.setFromSpherical(this.spherical);
+                position.copy(this.target).add(offset);
+                
+                this.camera.lookAt(this.target);
+                
+                if (this.enableDamping) {
+                    this.sphericalDelta.theta *= (1 - this.dampingFactor);
+                    this.sphericalDelta.phi *= (1 - this.dampingFactor);
+                    this.scale = 1 + (this.scale - 1) * (1 - this.dampingFactor);
+                } else {
+                    this.sphericalDelta.set(0, 0, 0);
+                    this.scale = 1;
+                }
+                
+                return true;
+            }
+            
+            reset() {
+                this.camera.position.set(0, 1.6, 3);
+                this.target.set(0, 0, 0);
+                this.camera.lookAt(this.target);
+                this.sphericalDelta.set(0, 0, 0);
+                this.scale = 1;
+            }
+        }
+        
+        // 將控制器添加到 THREE 命名空間
+        THREE.OrbitControls = SimpleOrbitControls;
+        
+        updateLoadingStatus('控制器設定完成，載入應用程式...');
+        console.log('OrbitControls 已設定');
+    </script>
+
+    <script>
+        // UI 收合控制（輕量）
+        document.addEventListener('DOMContentLoaded', () => {
+            // 如果是小螢幕（手機），預設先隱藏大部分 UI，僅顯示開始 AR 按鈕。
+            const isMobileViewport = (window.matchMedia && window.matchMedia('(max-width: 480px)').matches) || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+            if (isMobileViewport) {
+                document.body.classList.add('mobile-await-ar');
+                // 強制顯示靜態 fallback 按鈕（以防 CSS 規則或其他腳本遮蔽）
+                try {
+                    const staticBtn = document.getElementById('mobileStartARFallback');
+                    if (staticBtn) staticBtn.style.display = 'block';
+                } catch (e) { /* ignore */ }
+            }
+
+            // 如果應用程式初始化完成後才顯示啟動按鈕，監聽 arapp:ready
+            const showStartButton = () => {
+                try {
+                    // 只有在應用已初始化且 AR 支援檢查完成（非 false）時才顯示按鈕
+                    if (!window.arApp || !window.arApp.isInitialized) return false;
+                    if (typeof window.arApp.isARSupported !== 'undefined' && window.arApp.isARSupported === false) {
+                        // 明確不支援 AR：不顯示主按鈕（mobile fallback 邏輯可顯示其他說明）
+                        return false;
+                    }
+
+                    const btn = document.getElementById('toggleAR');
+                    if (btn) {
+                        // 使用 inline style 並指定 important 以覆蓋預設 CSS
+                        btn.style.setProperty('display', 'inline-block', 'important');
+                        btn.disabled = !!(window.arApp && window.arApp.isARSupported === false);
+                    }
+                    return true;
+                } catch (e) { /* ignore */ }
+                return false;
+            };
+
+            // 若 arApp 已經存在並初始化完成，也立刻顯示
+            try {
+                if (window.arApp && window.arApp.isInitialized && (typeof window.arApp.isARSupported === 'undefined' || window.arApp.isARSupported !== false)) {
+                    showStartButton();
+                }
+            } catch (e) { /* ignore */ }
+
+            // 當收到 arapp:ready 時，重試顯示（處理可能的 race condition）
+            window.addEventListener('arapp:ready', () => {
+                // 嘗試立即顯示，若失敗則在短時間內重試幾次
+                let attempts = 0;
+                const tryShow = () => {
+                    attempts++;
+                    const ok = showStartButton();
+                    if (!ok && attempts < 6) {
+                        setTimeout(tryShow, 300);
+                    }
+                };
+                tryShow();
+            });
+
+            const legend = document.getElementById('legend');
+            const collapseInfo = document.getElementById('collapseInfo');
+            const collapseLegend = document.getElementById('collapseLegend');
+            const info = document.getElementById('info');
+            const toggleAR = document.getElementById('toggleAR');
+
+            if (collapseInfo && info) {
+                collapseInfo.addEventListener('click', () => {
+                    info.style.display = (info.style.display === 'none') ? '' : 'none';
+                });
+            }
+
+            if (collapseLegend && legend) {
+                collapseLegend.addEventListener('click', () => {
+                    legend.style.display = (legend.style.display === 'none') ? '' : 'none';
+                });
+            }
+
+            // 統一的啟動 AR 行為：先移除 mobile-await-ar，顯示 UI，然後執行 arApp 的啟動或模擬按鈕點擊
+            async function startARFromUI() {
+                try {
+                    if (document.body.classList.contains('mobile-await-ar')) document.body.classList.remove('mobile-await-ar');
+                } catch (e) { /* ignore */ }
+
+                // 若原始按鈕存在並且有 click handler，優先觸發它（可能包含更完整的流程）
+                try {
+                    if (toggleAR && typeof toggleAR.click === 'function') {
+                        toggleAR.click();
+                        return;
+                    }
+                } catch (e) { /* ignore */ }
+
+                // 後備：直接呼叫 arApp 的 API
+                try {
+                    if (window.arApp && typeof window.arApp.startAR === 'function') {
+                        await window.arApp.startAR();
+                        return;
+                    } else if (window.arApp && typeof window.arApp.toggleAR === 'function') {
+                        window.arApp.toggleAR();
+                        return;
+                    }
+                } catch (err) {
+                    console.warn('AR start failed (from startARFromUI):', err);
+                }
+            }
+
+            // 點擊開始 AR 時：綁定統一處理
+            if (toggleAR) {
+                toggleAR.addEventListener('click', async (e) => {
+                    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+                    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+                    await startARFromUI();
+                });
+            }
+
+            // 檢查原始按鈕是否可見，如果不可見或被覆蓋，建立一個 fallback 的大按鈕，確保使用者一定能按到
+            (function ensureMobileFallback() {
+                if (!isMobileViewport) return;
+
+                const isVisible = (el) => {
+                    if (!el) return false;
+                    const style = window.getComputedStyle(el);
+                    if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+                    const rect = el.getBoundingClientRect();
+                    if (rect.width === 0 || rect.height === 0) return false;
+                    return true;
+                };
+
+                // 如果原本的 toggleAR 不可見，或不存在，則建立 fallback 按鈕
+                if (!isVisible(toggleAR)) {
+                    try {
+                        // 如果已經建立過 fallback，跳過
+                        if (document.getElementById('mobileStartARFallback')) return;
+
+                        const btn = document.createElement('button');
+                        btn.id = 'mobileStartARFallback';
+                        btn.textContent = '🚀 啟動 AR';
+                        // 內聯樣式保證優先權（fixed, high z-index）
+                        Object.assign(btn.style, {
+                            position: 'fixed',
+                            bottom: '18px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            zIndex: '10020',
+                            padding: '14px 22px',
+                            fontSize: '16px',
+                            borderRadius: '16px',
+                            background: 'linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.08) 100%)',
+                            color: '#fff',
+                            border: '1px solid rgba(255,255,255,0.18)',
+                            boxShadow: '0 12px 30px rgba(0,0,0,0.45)'
+                        });
+
+                        btn.addEventListener('click', async (ev) => {
+                            if (ev && ev.preventDefault) ev.preventDefault();
+                            if (ev && ev.stopPropagation) ev.stopPropagation();
+                            try { if (document.body.classList.contains('mobile-await-ar')) document.body.classList.remove('mobile-await-ar'); } catch(e) {}
+                            try { btn.parentElement && btn.parentElement.removeChild(btn); } catch(e) {}
+                            await startARFromUI();
+                        });
+
+                        document.body.appendChild(btn);
+                    } catch (e) {
+                        console.warn('建立 mobile fallback button 失敗', e);
+                    }
+                }
+            })();
+            // 為靜態 fallback 按鈕也綁定行為（若存在）
+            try {
+                const staticBtn = document.getElementById('mobileStartARFallback');
+                if (staticBtn && !staticBtn.dataset.bound) {
+                    staticBtn.addEventListener('click', async (e) => {
+                        if (e && e.preventDefault) e.preventDefault();
+                        if (e && e.stopPropagation) e.stopPropagation();
+                        try { if (document.body.classList.contains('mobile-await-ar')) document.body.classList.remove('mobile-await-ar'); } catch(e) {}
+                        try { staticBtn.style.display = 'none'; } catch(e) {}
+                        await startARFromUI();
+                    });
+                    staticBtn.dataset.bound = '1';
+                }
+            } catch (e) { /* ignore */ }
+
+            // 保護網格顯示：若 global three app 存在，周期性確保 gridMesh 可見且不被 frustum 剔除
+            setInterval(() => {
+                try {
+                    if (window.arApp && window.arApp.gridMesh) {
+                        window.arApp.gridMesh.frustumCulled = false;
+                        window.arApp.gridMesh.visible = window.arApp.gridVisible;
+                    }
+                } catch (e) { /* ignore */ }
+            }, 500);
+        });
+    </script>
+    
+
+
 </body>
 </html>
