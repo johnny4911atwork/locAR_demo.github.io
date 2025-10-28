@@ -131,14 +131,35 @@ locar.on("gpsupdate", ev => {
 
 locar.startGps();
 
-document.getElementById("setFakeLoc").addEventListener("click", e => {
-    alert("Using fake input GPS, not real GPS location");
-    locar.stopGps();
-    locar.fakeGps(
-        parseFloat(document.getElementById("fakeLon").value),
-        parseFloat(document.getElementById("fakeLat").value)
-    );
-});
+// Helper: safe element getter to avoid null access from third-party code paths
+function safeEl(id){
+    try{
+        return document.getElementById(id) || null;
+    }catch(e){
+        return null;
+    }
+}
+
+const setFakeBtn = safeEl('setFakeLoc');
+const fakeLonEl = safeEl('fakeLon');
+const fakeLatEl = safeEl('fakeLat');
+
+if(setFakeBtn){
+    setFakeBtn.addEventListener("click", e => {
+        alert("Using fake input GPS, not real GPS location");
+        locar.stopGps();
+        const lon = fakeLonEl ? parseFloat(fakeLonEl.value) : NaN;
+        const lat = fakeLatEl ? parseFloat(fakeLatEl.value) : NaN;
+        if(!isFinite(lon) || !isFinite(lat)){
+            alert('Invalid fake coordinates');
+            return;
+        }
+        locar.fakeGps(lon, lat);
+    });
+} else {
+    // No fake button found; ensure possible third-party writes don't fail by
+    // ensuring defensive status elements exist (added in HTML patch)
+}
 
 renderer.setAnimationLoop(animate);
 
