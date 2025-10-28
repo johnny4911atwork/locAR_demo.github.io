@@ -93,7 +93,6 @@ locar.on("gpsupdate", ev => {
             const latDis = j * gridSpacing;
 
             const mesh = new THREE.Mesh(gridGeom, gridMaterial);
-            mesh.rotation.x = -Math.PI / 2; // -90 度使其平躺
 
             // 使用 locar.add 將方格添加到 LocAR 系統
             locar.add(
