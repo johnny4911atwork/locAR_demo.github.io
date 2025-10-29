@@ -88,10 +88,11 @@ function updateGrid(centerLon, centerLat) {
                 const cellLat = centerLat + latOffset;
 
                 const mesh = createCellMesh(c, r);
-                // add via locar so it's placed in AR world
-                locar.add(mesh, cellLon, cellLat);
+                // For debugging, add to scene at offset positions instead of using locar
+                mesh.position.set(c * 10, 0, r * 10); // place in a grid around origin
+                scene.add(mesh);
                 gridCells.set(key, { mesh, lon: cellLon, lat: cellLat });
-                console.log(`Added cell ${key} at ${cellLon}, ${cellLat}`);
+                console.log(`Added cell ${key} at scene position (${c * 10}, 0, ${r * 10})`);
             }
         }
     }
@@ -100,10 +101,8 @@ function updateGrid(centerLon, centerLat) {
     for (const key of Array.from(gridCells.keys())) {
         if (!required.has(key)) {
             const entry = gridCells.get(key);
-            // Remove from locar/scene
-            try {
-                scene.remove(entry.mesh);
-            } catch (e) {}
+            // Remove from scene
+            scene.remove(entry.mesh);
             if (entry.mesh.geometry) entry.mesh.geometry.dispose();
             if (entry.mesh.material) entry.mesh.material.dispose();
             gridCells.delete(key);
@@ -157,6 +156,13 @@ document.getElementById("setFakeLoc").addEventListener("click", e => {
     locar.fakeGps(fakeLon, fakeLat);
     // Manually trigger updateGrid since fakeGps might not fire gpsupdate
     updateGrid(fakeLon, fakeLat);
+    // Add test mesh directly to scene at origin for debugging
+    const testGeom = new THREE.PlaneGeometry(20, 20);
+    const testMat = new THREE.MeshBasicMaterial({ color: 0x0000ff, side: THREE.DoubleSide });
+    const testMesh = new THREE.Mesh(testGeom, testMat);
+    testMesh.rotation.x = -Math.PI / 2;
+    scene.add(testMesh);
+    console.log("Added test mesh at scene origin");
 });
 
 renderer.setAnimationLoop(animate);
