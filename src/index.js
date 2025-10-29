@@ -55,7 +55,7 @@ function metersToLonDegrees(meters, latitude) {
 
 // Create a mesh for each grid cell (simple plane)
 function createCellMesh(col, row) {
-    const size = 10; // increased size for visibility
+    const size = 50; // even larger for visibility
     const geom = new THREE.PlaneGeometry(size, size);
     const color = 0xff0000; // red for visibility
     const mat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
@@ -88,11 +88,11 @@ function updateGrid(centerLon, centerLat) {
                 const cellLat = centerLat + latOffset;
 
                 const mesh = createCellMesh(c, r);
-                // For debugging, add to scene at offset positions instead of using locar
-                mesh.position.set(c * 10, 0, r * 10); // place in a grid around origin
+                // Place in front of camera at z=10 plane
+                mesh.position.set(c * 10, 0, 10 + r * 10);
                 scene.add(mesh);
                 gridCells.set(key, { mesh, lon: cellLon, lat: cellLat });
-                console.log(`Added cell ${key} at scene position (${c * 10}, 0, ${r * 10})`);
+                console.log(`Added cell ${key} at scene position (${c * 10}, 0, ${10 + r * 10})`);
             }
         }
     }
@@ -161,8 +161,9 @@ document.getElementById("setFakeLoc").addEventListener("click", e => {
     const testMat = new THREE.MeshBasicMaterial({ color: 0x0000ff, side: THREE.DoubleSide });
     const testMesh = new THREE.Mesh(testGeom, testMat);
     testMesh.rotation.x = -Math.PI / 2;
+    testMesh.position.set(0, 0, 10); // in front of camera
     scene.add(testMesh);
-    console.log("Added test mesh at scene origin");
+    console.log("Added test mesh at scene position (0,0,10)");
 });
 
 renderer.setAnimationLoop(animate);
