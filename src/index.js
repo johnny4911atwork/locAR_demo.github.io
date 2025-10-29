@@ -90,6 +90,7 @@ function updateGrid(centerLon, centerLat) {
                 const mesh = createCellMesh(c, r);
                 // add via locar so it's placed in AR world
                 locar.add(mesh, cellLon, cellLat);
+                console.log('Mesh world position:', mesh.position);
                 gridCells.set(key, { mesh, lon: cellLon, lat: cellLat });
                 console.log(`Added cell ${key} at ${cellLon}, ${cellLat}`);
             }
@@ -134,6 +135,11 @@ locar.on("gpsupdate", ev => {
     const lon = ev.position.coords.longitude;
     const lat = ev.position.coords.latitude;
     updateGrid(lon, lat);
+
+    // 調試:檢查場景中的物件
+    console.log('Scene children count:', scene.children.length);
+    console.log('Camera position:', camera.position);
+
     if (firstLocation) {
         alert(`Got the initial location: longitude ${lon}, latitude ${lat}`);
         firstLocation = false;
