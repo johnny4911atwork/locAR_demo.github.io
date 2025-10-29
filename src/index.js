@@ -36,7 +36,7 @@ let firstLocation = true;
 // Grid configuration: gridSize must be odd (3,5,7...), spacing in meters between cells
 const gridConfig = {
     gridSize: 3,
-    spacingMeters: 2
+    spacingMeters: 50  // 原本 2 -> 改成 50 或更大
 };
 
 // Map to hold generated cells by key "col,row"
@@ -55,13 +55,12 @@ function metersToLonDegrees(meters, latitude) {
 
 // Create a mesh for each grid cell (simple plane)
 function createCellMesh(col, row) {
-    const size = 5; // plane size in three.js units (arbitrary)
+    const size = 20; // 原本 5 -> 改成 20 或更大
     const geom = new THREE.PlaneGeometry(size, size);
     const color = 0x00ff00;
     const mat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
     const mesh = new THREE.Mesh(geom, mat);
-    mesh.rotation.x = -Math.PI / 2; // make horizontal
-    // store meta so we can identify
+    mesh.rotation.x = -Math.PI / 2;
     mesh.userData.grid = { col, row };
     return mesh;
 }
