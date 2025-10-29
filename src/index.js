@@ -55,7 +55,7 @@ function metersToLonDegrees(meters, latitude) {
 
 // Create a mesh for each grid cell (simple plane)
 function createCellMesh(col, row) {
-    const size = 1; // plane size in three.js units (arbitrary)
+    const size = 5; // plane size in three.js units (arbitrary)
     const geom = new THREE.PlaneGeometry(size, size);
     const color = 0x00ff00;
     const mat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
@@ -68,6 +68,7 @@ function createCellMesh(col, row) {
 
 // Update grid around center lon/lat
 function updateGrid(centerLon, centerLat) {
+    console.log(`Updating grid at ${centerLon}, ${centerLat}`);
     const half = Math.floor(gridConfig.gridSize / 2);
     const spacing = gridConfig.spacingMeters;
 
@@ -90,6 +91,7 @@ function updateGrid(centerLon, centerLat) {
                 // add via locar so it's placed in AR world
                 locar.add(mesh, cellLon, cellLat);
                 gridCells.set(key, { mesh, lon: cellLon, lat: cellLat });
+                console.log(`Added cell ${key} at ${cellLon}, ${cellLat}`);
             }
         }
     }
@@ -105,8 +107,10 @@ function updateGrid(centerLon, centerLat) {
             if (entry.mesh.geometry) entry.mesh.geometry.dispose();
             if (entry.mesh.material) entry.mesh.material.dispose();
             gridCells.delete(key);
+            console.log(`Removed cell ${key}`);
         }
     }
+    console.log(`Grid now has ${gridCells.size} cells`);
 }
 
 let deviceOrientationControls = new LocAR.DeviceOrientationControls(camera);
@@ -141,10 +145,11 @@ locar.startGps();
 document.getElementById("setFakeLoc").addEventListener("click", e => {
     alert("Using fake input GPS, not real GPS location");
     locar.stopGps();
-    locar.fakeGps(
-        parseFloat(document.getElementById("fakeLon").value),
-        parseFloat(document.getElementById("fakeLat").value)
-    );
+    const fakeLon = parseFloat(document.getElementById("fakeLon").value);
+    const fakeLat = parseFloat(document.getElementById("fakeLat").value);
+    locar.fakeGps(fakeLon, fakeLat);
+    // Manually trigger updateGrid since fakeGps might not fire gpsupdate
+    updateGrid(fakeLon, fakeLat);
 });
 
 renderer.setAnimationLoop(animate);
