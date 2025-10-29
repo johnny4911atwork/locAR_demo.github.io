@@ -32,51 +32,65 @@ window.addEventListener("resize", ev => {
 
 let firstLocation = true;
 let groundPlane = null;
+let isGridCreated = false;
 
-// 創建一個簡單的地面網格,直接放在相機前方
+// 創建固定的地面網格（只執行一次）
 function createGroundGrid() {
-    // 移除舊的
-    if (groundPlane) {
-        scene.remove(groundPlane);
-        groundPlane.geometry.dispose();
-        groundPlane.material.dispose();
-    }
-
-    // 創建一個大的網格地面
-    const size = 100;
+    if (isGridCreated) return; // 防止重複創建
+    
+    const size = 50;
     const divisions = 10;
     const gridHelper = new THREE.GridHelper(size, divisions, 0x00ff00, 0x00ff00);
     
-    // 讓網格可見度更高
     gridHelper.material.opacity = 0.8;
     gridHelper.material.transparent = true;
     
-    // 放在相機前方 10 米,下方 1.5 米 (假設相機在眼睛高度)
-    gridHelper.position.set(0, -1.5, -10);
+    // 固定在世界座標的地面
+    gridHelper.position.set(0, -1.5, 0);
     
     scene.add(gridHelper);
     groundPlane = gridHelper;
+    isGridCreated = true;
     
-    console.log('Ground grid created at:', gridHelper.position);
+    console.log('Ground grid created (once)');
 }
 
-// 或者創建簡單的方塊標記
-function createSimpleMarkers(lon, lat) {
-    // 在用戶位置創建幾個彩色方塊
-    const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00];
-    const distances = [5, 10, 15, 20]; // 不同距離的標記
+// 創建基於 GPS 的標記
+function createGPSMarkers(lon, lat) {
+    // 清除舊標記
+    scene.children.filter(child => child.userData.isGPSMarker).forEach(marker => {
+        scene.remove(marker);
+        marker.geometry?.dispose();
+        marker.material?.dispose();
+    });
+    
+    const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff];
+    const distances = [10, 20, 30, 40, 50];
     
     distances.forEach((dist, i) => {
-        const geom = new THREE.BoxGeometry(2, 2, 2);
-        const mat = new THREE.MeshBasicMaterial({ color: colors[i] });
+        const geom = new THREE.BoxGeometry(5, 5, 5);
+        const mat = new THREE.MeshBasicMaterial({ 
+            color: colors[i],
+            transparent: true,
+            opacity: 0.8
+        });
         const cube = new THREE.Mesh(geom, mat);
+        cube.userData.isGPSMarker = true;
         
-        // 在用戶北方不同距離放置
-        const latOffset = dist / 111320; // 轉換米到度
+        // 在北方放置標記
+        const latOffset = dist / 111320;
         locar.add(cube, lon, lat + latOffset);
         
-        console.log(`Added cube ${i} at distance ${dist}m`);
+        console.log(`Marker ${i} added at ${dist}m north`);
     });
+    
+    // 在當前位置也放一個標記
+    const centerGeom = new THREE.SphereGeometry(3, 16, 16);
+    const centerMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const centerMarker = new THREE.Mesh(centerGeom, centerMat);
+    centerMarker.userData.isGPSMarker = true;
+    locar.add(centerMarker, lon, lat);
+    console.log(`Center marker at ${lon}, ${lat}`);
 }
 
 let deviceOrientationControls = new LocAR.DeviceOrientationControls(camera);
@@ -100,16 +114,15 @@ locar.on("gpsupdate", ev => {
     const lat = ev.position.coords.latitude;
     
     if (firstLocation) {
-        alert(`Got location: ${lon}, ${lat}`);
+        alert(`Got location: ${lon.toFixed(6)}, ${lat.toFixed(6)}`);
         
-        // 方法 1: 創建相機本地的網格 (不依賴 GPS 精度)
+        // 只在第一次創建網格
         createGroundGrid();
+        createGPSMarkers(lon, lat);
         
-        // 方法 2: 創建基於 GPS 的標記
-        createSimpleMarkers(lon, lat);
-        
-        console.log('Camera position:', camera.position);
-        console.log('Scene children:', scene.children.length);
+        console.log('Setup complete');
+        console.log('Camera:', camera.position);
+        console.log('Scene objects:', scene.children.length);
         
         firstLocation = false;
     }
@@ -117,19 +130,27 @@ locar.on("gpsupdate", ev => {
 
 locar.startGps();
 
-document.getElementById("setFakeLoc").addEventListener("click", e => {
+document.getElementById("setFakeLoc")?.addEventListener("click", e => {
     alert("Using fake GPS");
     locar.stopGps();
     const fakeLon = parseFloat(document.getElementById("fakeLon").value);
     const fakeLat = parseFloat(document.getElementById("fakeLat").value);
-    locar.fakeGps(fakeLon, fakeLat);
+    
+    isGridCreated = false; // 重置
     createGroundGrid();
-    createSimpleMarkers(fakeLon, fakeLat);
+    createGPSMarkers(fakeLon, fakeLat);
 });
 
 renderer.setAnimationLoop(animate);
 
 function animate() {
     deviceOrientationControls?.update();
+    
+    // 讓網格跟著相機移動（保持在腳下）
+    if (groundPlane) {
+        groundPlane.position.x = camera.position.x;
+        groundPlane.position.z = camera.position.z;
+    }
+    
     renderer.render(scene, camera);
 }
