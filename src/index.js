@@ -46,7 +46,7 @@ window.addEventListener("resize", ev => {
 // GPS 追蹤狀態
 let lastUpdateLon = null;
 let lastUpdateLat = null;
-const UPDATE_THRESHOLD_METERS = 1.1;
+const UPDATE_THRESHOLD_METERS = 5;
 let firstLocation = true;
 
 // 儲存當前的格子 - key 是實際經緯度字串
