@@ -25,22 +25,6 @@ cam.on("webcamerror", error => {
     alert(`Webcam error: code ${error.code} message ${error.message}`);
 });
 
-// Try to start the webcam feed
-try {
-    cam.start();
-} catch (e) {
-    console.warn('cam.start() failed or not supported:', e);
-}
-
-// Debug helper: set true to disable device orientation and place camera so meshes are visible
-const debugMode = true;
-
-if (debugMode) {
-    // position the camera in a sensible debug spot and look at origin
-    camera.position.set(0, 20, 50);
-    camera.lookAt(0, 0, 0);
-}
-
 window.addEventListener("resize", ev => {
     renderer.setSize(window.innerWidth, window.innerHeight);
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -71,7 +55,7 @@ function metersToLonDegrees(meters, latitude) {
 
 // Create a mesh for each grid cell (simple plane)
 function createCellMesh(col, row) {
-    const size = 50; // even larger for visibility
+    const size = 10; // increased size for visibility
     const geom = new THREE.PlaneGeometry(size, size);
     const color = 0xff0000; // red for visibility
     const mat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
@@ -104,11 +88,10 @@ function updateGrid(centerLon, centerLat) {
                 const cellLat = centerLat + latOffset;
 
                 const mesh = createCellMesh(c, r);
-                // Place in front of camera at z=-10 plane (camera looks toward -Z by default)
-                mesh.position.set(c * 10, 0, -10 + r * 10);
-                scene.add(mesh);
+                // add via locar so it's placed in AR world
+                locar.add(mesh, cellLon, cellLat);
                 gridCells.set(key, { mesh, lon: cellLon, lat: cellLat });
-                console.log(`Added cell ${key} at scene position (${c * 10}, 0, ${-10 + r * 10})`);
+                console.log(`Added cell ${key} at ${cellLon}, ${cellLat}`);
             }
         }
     }
@@ -117,8 +100,10 @@ function updateGrid(centerLon, centerLat) {
     for (const key of Array.from(gridCells.keys())) {
         if (!required.has(key)) {
             const entry = gridCells.get(key);
-            // Remove from scene
-            scene.remove(entry.mesh);
+            // Remove from locar/scene
+            try {
+                scene.remove(entry.mesh);
+            } catch (e) {}
             if (entry.mesh.geometry) entry.mesh.geometry.dispose();
             if (entry.mesh.material) entry.mesh.material.dispose();
             gridCells.delete(key);
@@ -151,15 +136,13 @@ locar.on("gpsupdate", ev => {
     updateGrid(lon, lat);
     if (firstLocation) {
         alert(`Got the initial location: longitude ${lon}, latitude ${lat}`);
-        // Add a test mesh at a visible position in front of camera for debugging
+        // Add a test mesh at origin for debugging
         const testGeom = new THREE.PlaneGeometry(20, 20);
         const testMat = new THREE.MeshBasicMaterial({ color: 0x0000ff, side: THREE.DoubleSide });
         const testMesh = new THREE.Mesh(testGeom, testMat);
         testMesh.rotation.x = -Math.PI / 2;
-        // place it in front of camera (negative Z)
-        testMesh.position.set(0, 0, -10);
-        scene.add(testMesh);
-        console.log("Added test mesh at scene position (0,0,-10)");
+        locar.add(testMesh, 0, 0); // at origin
+        console.log("Added test mesh at origin");
         firstLocation = false;
     }
 });
@@ -174,14 +157,6 @@ document.getElementById("setFakeLoc").addEventListener("click", e => {
     locar.fakeGps(fakeLon, fakeLat);
     // Manually trigger updateGrid since fakeGps might not fire gpsupdate
     updateGrid(fakeLon, fakeLat);
-    // Add test mesh directly to scene at origin for debugging
-    const testGeom = new THREE.PlaneGeometry(20, 20);
-    const testMat = new THREE.MeshBasicMaterial({ color: 0x0000ff, side: THREE.DoubleSide });
-    const testMesh = new THREE.Mesh(testGeom, testMat);
-    testMesh.rotation.x = -Math.PI / 2;
-    testMesh.position.set(0, 0, 10); // in front of camera
-    scene.add(testMesh);
-    console.log("Added test mesh at scene position (0,0,10)");
 });
 
 renderer.setAnimationLoop(animate);
