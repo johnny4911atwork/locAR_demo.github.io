@@ -7,13 +7,12 @@ const renderer = new THREE.WebGLRenderer({
     canvas: document.getElementById('glscene')
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
-//document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 
 const locar = new LocAR.LocationBased(scene, camera);
 
-const cam = new LocAR.Webcam( { 
+const cam = new LocAR.Webcam({ 
     video: { facingMode: 'environment' }
 }, null);
 
@@ -32,85 +31,52 @@ window.addEventListener("resize", ev => {
 });
 
 let firstLocation = true;
+let groundPlane = null;
 
-// Grid configuration: gridSize must be odd (3,5,7...), spacing in meters between cells
-const gridConfig = {
-    gridSize: 3,
-    spacingMeters: 50  // 原本 2 -> 改成 50 或更大
-};
-
-// Map to hold generated cells by key "col,row"
-const gridCells = new Map();
-
-// Helpers: approximate meters -> degrees conversions
-function metersToLatDegrees(meters) {
-    // 1 deg latitude ~= 111320 meters
-    return meters / 111320;
-}
-
-function metersToLonDegrees(meters, latitude) {
-    // 1 deg longitude ~= 111320 * cos(lat)
-    return meters / (111320 * Math.cos(latitude * Math.PI / 180));
-}
-
-// Create a mesh for each grid cell (simple plane)
-function createCellMesh(col, row) {
-    const size = 20; // 原本 5 -> 改成 20 或更大
-    const geom = new THREE.PlaneGeometry(size, size);
-    const color = 0x00ff00;
-    const mat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
-    const mesh = new THREE.Mesh(geom, mat);
-    mesh.rotation.x = -Math.PI / 2;
-    mesh.userData.grid = { col, row };
-    return mesh;
-}
-
-// Update grid around center lon/lat
-function updateGrid(centerLon, centerLat) {
-    console.log(`Updating grid at ${centerLon}, ${centerLat}`);
-    const half = Math.floor(gridConfig.gridSize / 2);
-    const spacing = gridConfig.spacingMeters;
-
-    // Build set of required keys
-    const required = new Set();
-
-    for (let r = -half; r <= half; r++) {
-        for (let c = -half; c <= half; c++) {
-            const key = `${c},${r}`;
-            required.add(key);
-
-            if (!gridCells.has(key)) {
-                // compute lon/lat offset for this cell
-                const lonOffset = metersToLonDegrees(c * spacing, centerLat);
-                const latOffset = metersToLatDegrees(r * spacing);
-                const cellLon = centerLon + lonOffset;
-                const cellLat = centerLat + latOffset;
-
-                const mesh = createCellMesh(c, r);
-                // add via locar so it's placed in AR world
-                locar.add(mesh, cellLon, cellLat);
-                console.log('Mesh world position:', mesh.position);
-                gridCells.set(key, { mesh, lon: cellLon, lat: cellLat });
-                console.log(`Added cell ${key} at ${cellLon}, ${cellLat}`);
-            }
-        }
+// 創建一個簡單的地面網格,直接放在相機前方
+function createGroundGrid() {
+    // 移除舊的
+    if (groundPlane) {
+        scene.remove(groundPlane);
+        groundPlane.geometry.dispose();
+        groundPlane.material.dispose();
     }
 
-    // Remove cells not required anymore
-    for (const key of Array.from(gridCells.keys())) {
-        if (!required.has(key)) {
-            const entry = gridCells.get(key);
-            // Remove from locar/scene
-            try {
-                scene.remove(entry.mesh);
-            } catch (e) {}
-            if (entry.mesh.geometry) entry.mesh.geometry.dispose();
-            if (entry.mesh.material) entry.mesh.material.dispose();
-            gridCells.delete(key);
-            console.log(`Removed cell ${key}`);
-        }
-    }
-    console.log(`Grid now has ${gridCells.size} cells`);
+    // 創建一個大的網格地面
+    const size = 100;
+    const divisions = 10;
+    const gridHelper = new THREE.GridHelper(size, divisions, 0x00ff00, 0x00ff00);
+    
+    // 讓網格可見度更高
+    gridHelper.material.opacity = 0.8;
+    gridHelper.material.transparent = true;
+    
+    // 放在相機前方 10 米,下方 1.5 米 (假設相機在眼睛高度)
+    gridHelper.position.set(0, -1.5, -10);
+    
+    scene.add(gridHelper);
+    groundPlane = gridHelper;
+    
+    console.log('Ground grid created at:', gridHelper.position);
+}
+
+// 或者創建簡單的方塊標記
+function createSimpleMarkers(lon, lat) {
+    // 在用戶位置創建幾個彩色方塊
+    const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00];
+    const distances = [5, 10, 15, 20]; // 不同距離的標記
+    
+    distances.forEach((dist, i) => {
+        const geom = new THREE.BoxGeometry(2, 2, 2);
+        const mat = new THREE.MeshBasicMaterial({ color: colors[i] });
+        const cube = new THREE.Mesh(geom, mat);
+        
+        // 在用戶北方不同距離放置
+        const latOffset = dist / 111320; // 轉換米到度
+        locar.add(cube, lon, lat + latOffset);
+        
+        console.log(`Added cube ${i} at distance ${dist}m`);
+    });
 }
 
 let deviceOrientationControls = new LocAR.DeviceOrientationControls(camera);
@@ -130,17 +96,21 @@ locar.on("gpserror", error => {
 });
 
 locar.on("gpsupdate", ev => {
-    // On every GPS update, refresh the small grid centered on user
     const lon = ev.position.coords.longitude;
     const lat = ev.position.coords.latitude;
-    updateGrid(lon, lat);
-
-    // 調試:檢查場景中的物件
-    console.log('Scene children count:', scene.children.length);
-    console.log('Camera position:', camera.position);
-
+    
     if (firstLocation) {
-        alert(`Got the initial location: longitude ${lon}, latitude ${lat}`);
+        alert(`Got location: ${lon}, ${lat}`);
+        
+        // 方法 1: 創建相機本地的網格 (不依賴 GPS 精度)
+        createGroundGrid();
+        
+        // 方法 2: 創建基於 GPS 的標記
+        createSimpleMarkers(lon, lat);
+        
+        console.log('Camera position:', camera.position);
+        console.log('Scene children:', scene.children.length);
+        
         firstLocation = false;
     }
 });
@@ -148,13 +118,13 @@ locar.on("gpsupdate", ev => {
 locar.startGps();
 
 document.getElementById("setFakeLoc").addEventListener("click", e => {
-    alert("Using fake input GPS, not real GPS location");
+    alert("Using fake GPS");
     locar.stopGps();
     const fakeLon = parseFloat(document.getElementById("fakeLon").value);
     const fakeLat = parseFloat(document.getElementById("fakeLat").value);
     locar.fakeGps(fakeLon, fakeLat);
-    // Manually trigger updateGrid since fakeGps might not fire gpsupdate
-    updateGrid(fakeLon, fakeLat);
+    createGroundGrid();
+    createSimpleMarkers(fakeLon, fakeLat);
 });
 
 renderer.setAnimationLoop(animate);
