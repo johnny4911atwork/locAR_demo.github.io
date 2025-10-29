@@ -125,6 +125,10 @@ locar.on("gpsupdate", ev => {
         console.log('Scene objects:', scene.children.length);
         
         firstLocation = false;
+        
+        // 停止 GPS 更新,避免持續觸發
+        locar.stopGps();
+        console.log('GPS stopped to prevent flickering');
     }
 });
 
