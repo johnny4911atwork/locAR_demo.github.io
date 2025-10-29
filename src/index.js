@@ -169,6 +169,6 @@ document.getElementById("setFakeLoc").addEventListener("click", e => {
 renderer.setAnimationLoop(animate);
 
 function animate() {
-    deviceOrientationControls?.update();
+    // deviceOrientationControls?.update(); // temporarily disabled for testing
     renderer.render(scene, camera);
 }
