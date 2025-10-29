@@ -55,9 +55,9 @@ function metersToLonDegrees(meters, latitude) {
 
 // Create a mesh for each grid cell (simple plane)
 function createCellMesh(col, row) {
-    const size = 10; // increased size for visibility
+    const size = 5; // plane size in three.js units (arbitrary)
     const geom = new THREE.PlaneGeometry(size, size);
-    const color = 0xff0000; // red for visibility
+    const color = 0x00ff00;
     const mat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
     const mesh = new THREE.Mesh(geom, mat);
     mesh.rotation.x = -Math.PI / 2; // make horizontal
@@ -136,13 +136,6 @@ locar.on("gpsupdate", ev => {
     updateGrid(lon, lat);
     if (firstLocation) {
         alert(`Got the initial location: longitude ${lon}, latitude ${lat}`);
-        // Add a test mesh at origin for debugging
-        const testGeom = new THREE.PlaneGeometry(20, 20);
-        const testMat = new THREE.MeshBasicMaterial({ color: 0x0000ff, side: THREE.DoubleSide });
-        const testMesh = new THREE.Mesh(testGeom, testMat);
-        testMesh.rotation.x = -Math.PI / 2;
-        locar.add(testMesh, 0, 0); // at origin
-        console.log("Added test mesh at origin");
         firstLocation = false;
     }
 });
