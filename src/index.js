@@ -46,14 +46,14 @@ window.addEventListener("resize", ev => {
 // GPS 追蹤狀態
 let lastUpdateLon = null;
 let lastUpdateLat = null;
-const UPDATE_THRESHOLD_METERS = 5;
+const UPDATE_THRESHOLD_METERS = 1.1;
 let firstLocation = true;
 
 // 儲存當前的格子 - key 是實際經緯度字串
 const gridCells = new Map();
 
 // 網格配置
-const GRID_PRECISION = 4; // 小數點後幾位 (4 = 0.0001 度 ≈ 11米)
+const GRID_PRECISION = 5; // 小數點後幾位 (4 = 0.0001 度 ≈ 11米)
 const GRID_RANGE = 3; // 顯示周圍多少格
 
 // 計算兩個 GPS 座標之間的距離（米）
