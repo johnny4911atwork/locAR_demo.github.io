@@ -1,7 +1,8 @@
 import * as THREE from "https://esm.sh/three";
 import * as LocAR from 'https://esm.sh/locar';
 
-const camera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 0.001, 1000);
+const camera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 1.6, 0); // 眼睛高度
 
 const renderer = new THREE.WebGLRenderer({
     canvas: document.getElementById('glscene')
@@ -10,8 +11,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 
 const scene = new THREE.Scene();
 
-const locar = new LocAR.LocationBased(scene, camera);
-
+// Webcam 背景
 const cam = new LocAR.Webcam({ 
     video: { facingMode: 'environment' }
 }, null);
@@ -21,78 +21,10 @@ cam.on("webcamstarted", ev => {
 });
 
 cam.on("webcamerror", error => {
-    alert(`Webcam error: code ${error.code} message ${error.message}`);
+    alert(`Webcam error: ${error.code}`);
 });
 
-window.addEventListener("resize", ev => {
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-});
-
-let firstLocation = true;
-let groundPlane = null;
-let isGridCreated = false;
-
-// 創建固定的地面網格（只執行一次）
-function createGroundGrid() {
-    if (isGridCreated) return; // 防止重複創建
-    
-    const size = 50;
-    const divisions = 10;
-    const gridHelper = new THREE.GridHelper(size, divisions, 0x00ff00, 0x00ff00);
-    
-    gridHelper.material.opacity = 0.8;
-    gridHelper.material.transparent = true;
-    
-    // 固定在世界座標的地面
-    gridHelper.position.set(0, -1.5, 0);
-    
-    scene.add(gridHelper);
-    groundPlane = gridHelper;
-    isGridCreated = true;
-    
-    console.log('Ground grid created (once)');
-}
-
-// 創建基於 GPS 的標記
-function createGPSMarkers(lon, lat) {
-    // 清除舊標記
-    scene.children.filter(child => child.userData.isGPSMarker).forEach(marker => {
-        scene.remove(marker);
-        marker.geometry?.dispose();
-        marker.material?.dispose();
-    });
-    
-    const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff];
-    const distances = [10, 20, 30, 40, 50];
-    
-    distances.forEach((dist, i) => {
-        const geom = new THREE.BoxGeometry(5, 5, 5);
-        const mat = new THREE.MeshBasicMaterial({ 
-            color: colors[i],
-            transparent: true,
-            opacity: 0.8
-        });
-        const cube = new THREE.Mesh(geom, mat);
-        cube.userData.isGPSMarker = true;
-        
-        // 在北方放置標記
-        const latOffset = dist / 111320;
-        locar.add(cube, lon, lat + latOffset);
-        
-        console.log(`Marker ${i} added at ${dist}m north`);
-    });
-    
-    // 在當前位置也放一個標記
-    const centerGeom = new THREE.SphereGeometry(3, 16, 16);
-    const centerMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const centerMarker = new THREE.Mesh(centerGeom, centerMat);
-    centerMarker.userData.isGPSMarker = true;
-    locar.add(centerMarker, lon, lat);
-    console.log(`Center marker at ${lon}, ${lat}`);
-}
-
+// 設備方向控制
 let deviceOrientationControls = new LocAR.DeviceOrientationControls(camera);
 
 deviceOrientationControls.on("deviceorientationgranted", ev => {
@@ -100,61 +32,81 @@ deviceOrientationControls.on("deviceorientationgranted", ev => {
 });
 
 deviceOrientationControls.on("deviceorientationerror", error => {
-    alert(`Device orientation error: code ${error.code} message ${error.message}`);
+    alert(`Device orientation error: ${error.code}`);
 });
 
 deviceOrientationControls.init();
 
-locar.on("gpserror", error => {
-    alert(`GPS error: ${error.code}`);
+window.addEventListener("resize", ev => {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
 });
 
-locar.on("gpsupdate", ev => {
-    const lon = ev.position.coords.longitude;
-    const lat = ev.position.coords.latitude;
+// 創建地面網格 - 純 Three.js
+function createGroundGrid() {
+    const size = 100;
+    const divisions = 20;
+    const grid = new THREE.GridHelper(size, divisions, 0x00ff00, 0x00ff00);
+    grid.position.y = 0; // 地面高度
+    scene.add(grid);
+    console.log('Grid added');
+    return grid;
+}
+
+// 創建參考物件 - 讓你知道方向和距離
+function createReferenceObjects() {
+    // 前方的方塊（不同距離）
+    const distances = [5, 10, 15, 20, 30];
+    const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff];
     
-    if (firstLocation) {
-        alert(`Got location: ${lon.toFixed(6)}, ${lat.toFixed(6)}`);
-        
-        // 只在第一次創建網格
-        createGroundGrid();
-        createGPSMarkers(lon, lat);
-        
-        console.log('Setup complete');
-        console.log('Camera:', camera.position);
-        console.log('Scene objects:', scene.children.length);
-        
-        firstLocation = false;
-        
-        // 停止 GPS 更新,避免持續觸發
-        locar.stopGps();
-        console.log('GPS stopped to prevent flickering');
-    }
-});
-
-locar.startGps();
-
-document.getElementById("setFakeLoc")?.addEventListener("click", e => {
-    alert("Using fake GPS");
-    locar.stopGps();
-    const fakeLon = parseFloat(document.getElementById("fakeLon").value);
-    const fakeLat = parseFloat(document.getElementById("fakeLat").value);
+    distances.forEach((dist, i) => {
+        const geom = new THREE.BoxGeometry(2, 2, 2);
+        const mat = new THREE.MeshBasicMaterial({ color: colors[i] });
+        const cube = new THREE.Mesh(geom, mat);
+        cube.position.set(0, 1, -dist); // z 負值 = 前方
+        scene.add(cube);
+    });
     
-    isGridCreated = false; // 重置
-    createGroundGrid();
-    createGPSMarkers(fakeLon, fakeLat);
-});
+    // 四個方向的柱子
+    const directions = [
+        { pos: [10, 0, 0], color: 0xff0000, name: '東' },
+        { pos: [-10, 0, 0], color: 0x00ff00, name: '西' },
+        { pos: [0, 0, 10], color: 0x0000ff, name: '南' },
+        { pos: [0, 0, -10], color: 0xffff00, name: '北' }
+    ];
+    
+    directions.forEach(dir => {
+        const geom = new THREE.CylinderGeometry(0.5, 0.5, 3, 8);
+        const mat = new THREE.MeshBasicMaterial({ color: dir.color });
+        const cylinder = new THREE.Mesh(geom, mat);
+        cylinder.position.set(dir.pos[0], 1.5, dir.pos[2]);
+        scene.add(cylinder);
+        console.log(`${dir.name} 方向標記已加入`);
+    });
+    
+    console.log('Reference objects added');
+}
 
+// 初始化場景
+createGroundGrid();
+createReferenceObjects();
+
+// 可選：加入環境光讓場景更亮
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+scene.add(ambientLight);
+
+console.log('Scene initialized with', scene.children.length, 'objects');
+
+// 動畫循環
 renderer.setAnimationLoop(animate);
 
 function animate() {
     deviceOrientationControls?.update();
-    
-    // 讓網格跟著相機移動（保持在腳下）
-    if (groundPlane) {
-        groundPlane.position.x = camera.position.x;
-        groundPlane.position.z = camera.position.z;
-    }
-    
     renderer.render(scene, camera);
 }
+
+// Fake location 按鈕（可選）
+document.getElementById("setFakeLoc")?.addEventListener("click", e => {
+    alert("純 Three.js 版本不需要 GPS！物件已經用相對座標固定了");
+});
