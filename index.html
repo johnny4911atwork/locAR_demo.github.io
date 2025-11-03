@@ -1,14 +1,127 @@
 <!DOCTYPE html>
 <html>
 <head>
-<script type="module" src="src/index.js"></script>
+<script type="module" href="src/index.js"></script>
 <script src="//cdn.jsdelivr.net/npm/eruda"></script>
 <script>eruda.init();</script>
 <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, minimum-scale=1, maximum-scale=1" />
 <title>LocAR.js example 2</title>
+<style>
+body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+#info-panel {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.75);
+    color: #fff;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    max-width: 300px;
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+#info-panel .info-title {
+    font-weight: bold;
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #00ff88;
+}
+
+#info-panel .info-item {
+    margin: 4px 0;
+    line-height: 1.4;
+}
+
+#info-panel .info-label {
+    color: #aaa;
+    font-size: 11px;
+}
+
+#info-panel .info-value {
+    color: #fff;
+    font-weight: 500;
+}
+
+#grid-status {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 11px;
+    color: #00ff88;
+}
+
+#gpsinput {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.75);
+    padding: 12px;
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+}
+
+#gpsinput input {
+    display: block;
+    margin: 6px 0;
+    padding: 8px 12px;
+    border: 1px solid #444;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 13px;
+    width: 180px;
+}
+
+#gpsinput input::placeholder {
+    color: #888;
+}
+
+#gpsinput button {
+    margin-top: 8px;
+    padding: 10px 16px;
+    background: #00ff88;
+    color: #000;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    width: 100%;
+    font-size: 13px;
+}
+
+#gpsinput button:active {
+    background: #00cc6f;
+}
+</style>
 </head>
 <body>
 <main>
+
+<div id="info-panel">
+    <div class="info-title">📍 GPS 資訊</div>
+    <div class="info-item">
+        <span class="info-label">經度:</span>
+        <span class="info-value" id="lon-value">--</span>
+    </div>
+    <div class="info-item">
+        <span class="info-label">緯度:</span>
+        <span class="info-value" id="lat-value">--</span>
+    </div>
+    <div class="info-item">
+        <span class="info-label">網格對齊點:</span>
+        <span class="info-value" id="grid-point">--</span>
+    </div>
+    <div id="grid-status">網格數量: <span id="grid-count">0</span></div>
+</div>
 
 <div id="gpsinput">
 <div><input id="fakeLat" placeholder="Fake Lat" /></div>
@@ -21,4 +134,3 @@
 </main>
 </body>
 </html>
-
