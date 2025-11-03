@@ -1,42 +1,57 @@
 import * as THREE from "https://esm.sh/three";
 import * as LocAR from 'https://esm.sh/locar';
 
+// 建立相機 (PerspectiveCamera)
 const camera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 2.0, 0);
+// 將相機放在接近使用者眼睛的高度 (m)
+camera.position.set(0, 1.6, 0);
 
+// 建立 WebGL renderer，並指定要使用的 canvas 元素
 const renderer = new THREE.WebGLRenderer({
     canvas: document.getElementById('glscene')
 });
+// 設定 renderer 的輸出大小為視窗大小
 renderer.setSize(window.innerWidth, window.innerHeight);
 
+// 建立場景 (Scene)
 const scene = new THREE.Scene();
 
+// 建立 LocAR 的定位式主控制器，傳入場景與相機
 const locar = new LocAR.LocationBased(scene, camera);
 
+// 建立攝影機背景 (Webcam) 物件，預設使用後方相機 (environment)
 const cam = new LocAR.Webcam({ 
     video: { facingMode: 'environment' }
 }, null);
 
+// 當 webcam 啟動成功時，使用其產生的 texture 作為場景背景
 cam.on("webcamstarted", ev => {
     scene.background = ev.texture;
 });
 
+// webcam 發生錯誤時顯示錯誤代碼
 cam.on("webcamerror", error => {
     alert(`Webcam error: ${error.code}`);
 });
 
+// 建立裝置方向控制 (DeviceOrientationControls)，用於接收手機方向
 let deviceOrientationControls = new LocAR.DeviceOrientationControls(camera);
 
+// 使用者授權裝置方向事件 (部分瀏覽器需要使用者互動來授權)
 deviceOrientationControls.on("deviceorientationgranted", ev => {
+    // 連線到感測器或啟用控制
     ev.target.connect();
 });
 
+// 裝置方向相關錯誤處理
 deviceOrientationControls.on("deviceorientationerror", error => {
     alert(`Device orientation error: ${error.code}`);
 });
 
+// 初始化裝置方向控制（準備開始接收事件）
 deviceOrientationControls.init();
 
+// 當視窗大小改變時，更新 renderer 與相機的長寬比
 window.addEventListener("resize", ev => {
     renderer.setSize(window.innerWidth, window.innerHeight);
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -140,7 +155,7 @@ function snapToGrid(value, precision) {
 
 // 創建單個格子
 function createGridCell(lon, lat) {
-    const size = 8;
+    const size = 12;
     const geom = new THREE.PlaneGeometry(size, size);
     
     // 計算這個位置的訊號強度
