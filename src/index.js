@@ -2,7 +2,7 @@ import * as THREE from "https://esm.sh/three";
 import * as LocAR from 'https://esm.sh/locar';
 
 const camera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 1.6, 0);
+camera.position.set(0, 1.8, 0);
 
 const renderer = new THREE.WebGLRenderer({
     canvas: document.getElementById('glscene')
@@ -62,7 +62,7 @@ const BASE_STATIONS = [
     { name: "101大樓基地台", lon: 121.5654, lat: 25.0340, power: 120 },
     { name: "西門町基地台", lon: 121.5070, lat: 25.0420, power: 100 },
     { name: "信義區基地台", lon: 121.5700, lat: 25.0330, power: 110 },
-    { name: "測試基地台#1", lon: 121.5425, lat: 25.0330, power: 80 }
+    { name: "測試基地台#1", lon: 121.5425, lat: 25.0330, power: 50 }
 ];
 
 // 計算訊號強度 (根據距離衰減)
