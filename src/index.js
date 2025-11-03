@@ -173,6 +173,37 @@ function updateInfoPanel(lon, lat, centerLon, centerLat, gridCount) {
     document.getElementById('lat-value').textContent = lat.toFixed(6);
     document.getElementById('grid-point').textContent = `${centerLon.toFixed(GRID_PRECISION)}, ${centerLat.toFixed(GRID_PRECISION)}`;
     document.getElementById('grid-count').textContent = gridCount;
+    
+    // 計算當前位置的訊號強度
+    const signalInfo = calculateSignalStrength(lon, lat);
+    
+    // 更新訊號強度顯示
+    const strengthElement = document.getElementById('signal-strength');
+    strengthElement.textContent = signalInfo.strength.toFixed(1);
+    
+    // 根據訊號強度改變顏色
+    if (signalInfo.strength >= 90) {
+        strengthElement.style.color = '#00ff00'; // 綠色
+    } else if (signalInfo.strength >= 70) {
+        strengthElement.style.color = '#66ff00'; // 淺綠
+    } else if (signalInfo.strength >= 50) {
+        strengthElement.style.color = '#ffff00'; // 黃色
+    } else if (signalInfo.strength >= 30) {
+        strengthElement.style.color = '#ff9900'; // 橙色
+    } else if (signalInfo.strength >= 10) {
+        strengthElement.style.color = '#ff0000'; // 紅色
+    } else {
+        strengthElement.style.color = '#660000'; // 深紅色
+    }
+    
+    // 更新最近基地台資訊
+    if (signalInfo.station) {
+        document.getElementById('nearest-station').textContent = signalInfo.station.name;
+        document.getElementById('station-distance').textContent = `${signalInfo.distance.toFixed(0)} 公尺`;
+    } else {
+        document.getElementById('nearest-station').textContent = '無訊號';
+        document.getElementById('station-distance').textContent = '--';
+    }
 }
 
 // 更新對齊到經緯度格點的網格
