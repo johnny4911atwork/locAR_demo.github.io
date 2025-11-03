@@ -93,15 +93,23 @@ function createGridCell() {
     return mesh;
 }
 
+// 更新前端資訊顯示
+function updateInfoPanel(lon, lat, centerLon, centerLat, gridCount) {
+    document.getElementById('lon-value').textContent = lon.toFixed(6);
+    document.getElementById('lat-value').textContent = lat.toFixed(6);
+    document.getElementById('grid-point').textContent = `${centerLon.toFixed(GRID_PRECISION)}, ${centerLat.toFixed(GRID_PRECISION)}`;
+    document.getElementById('grid-count').textContent = gridCount;
+}
+
 // 更新對齊到經緯度格點的網格
 function updateAlignedGrid(userLon, userLat) {
-    console.log(`User at: ${userLon.toFixed(6)}, ${userLat.toFixed(6)}`);
+    console.log(`使用者位置: ${userLon.toFixed(6)}, ${userLat.toFixed(6)}`);
     
     // 找到用戶所在的網格點
     const centerLon = snapToGrid(userLon, GRID_PRECISION);
     const centerLat = snapToGrid(userLat, GRID_PRECISION);
     
-    console.log(`Snapped to: ${centerLon.toFixed(6)}, ${centerLat.toFixed(6)}`);
+    console.log(`對齊到格點: ${centerLon.toFixed(6)}, ${centerLat.toFixed(6)}`);
     
     const gridStep = 1 / Math.pow(10, GRID_PRECISION); // 每格的度數
     const requiredCells = new Set();
@@ -127,7 +135,7 @@ function updateAlignedGrid(userLon, userLat) {
                     lat: gridLat
                 });
                 
-                console.log(`Added cell at ${key}`);
+                console.log(`已新增格子: ${key}`);
             }
         }
     }
@@ -139,11 +147,14 @@ function updateAlignedGrid(userLon, userLat) {
             cellData.mesh.geometry.dispose();
             cellData.mesh.material.dispose();
             gridCells.delete(key);
-            console.log(`Removed cell ${key}`);
+            console.log(`已移除格子: ${key}`);
         }
     }
     
-    console.log(`Grid now has ${gridCells.size} cells (${Math.pow(GRID_RANGE * 2 + 1, 2)} expected)`);
+    console.log(`目前網格有 ${gridCells.size} 個格子（預期 ${Math.pow(GRID_RANGE * 2 + 1, 2)} 個）`);
+    
+    // 更新前端顯示
+    updateInfoPanel(userLon, userLat, centerLon, centerLat, gridCells.size);
 }
 
 // GPS 更新處理
@@ -170,7 +181,7 @@ locar.on("gpsupdate", ev => {
     
     // 移動超過閾值才更新
     if (distance > UPDATE_THRESHOLD_METERS) {
-        console.log(`Moved ${distance.toFixed(2)}m - updating grid`);
+    console.log(`移動了 ${distance.toFixed(2)} 公尺，更新網格中`);
         updateAlignedGrid(lon, lat);
         lastUpdateLon = lon;
         lastUpdateLat = lat;
