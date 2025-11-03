@@ -154,7 +154,7 @@ function updateAlignedGrid(userLon, userLat) {
     console.log(`目前網格有 ${gridCells.size} 個格子（預期 ${Math.pow(GRID_RANGE * 2 + 1, 2)} 個）`);
     
     // 更新前端顯示
-    //updateInfoPanel(userLon, userLat, centerLon, centerLat, gridCells.size);
+    updateInfoPanel(userLon, userLat, centerLon, centerLat, gridCells.size);
 }
 
 // GPS 更新處理
