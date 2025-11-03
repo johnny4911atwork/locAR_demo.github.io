@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<script type="module" src="src/index.js"></script>
+<script type="module" src="index.js"></script>
 <script src="//cdn.jsdelivr.net/npm/eruda"></script>
 <script>eruda.init();</script>
 <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, minimum-scale=1, maximum-scale=1" />
@@ -182,6 +182,22 @@ body {
         <span class="info-value" id="grid-point">--</span>
     </div>
     <div id="grid-status">網格數量: <span id="grid-count">0</span></div>
+    
+    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.2);">
+        <div class="info-title" style="font-size: 13px; margin-bottom: 6px;">📶 當前訊號</div>
+        <div class="info-item">
+            <span class="info-label">訊號強度:</span>
+            <span class="info-value" id="signal-strength" style="font-weight: bold;">--</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">最近基地台:</span>
+            <span class="info-value" id="nearest-station" style="color: #ffcc00;">--</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">距離:</span>
+            <span class="info-value" id="station-distance">--</span>
+        </div>
+    </div>
 </div>
 
 <div id="base-stations">
@@ -204,7 +220,7 @@ body {
     </div>
     <div class="station-item">
         <div class="station-name">測試基地台#1</div>
-        <div class="station-coords">121.5477, 25.0326</div>
+        <div class="station-coords">121.5425, 25.0330</div>
     </div>
     <div class="signal-legend">
         <div class="legend-item">
@@ -237,4 +253,3 @@ body {
 </main>
 </body>
 </html>
-
