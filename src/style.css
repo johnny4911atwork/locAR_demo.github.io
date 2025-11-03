@@ -10,7 +10,7 @@ body {
     top: 10px;
     left: 10px;
     background: rgba(128, 128, 128, 0.6);
-    color: #fff;
+    color: #000;
     padding: 12px 16px;
     border-radius: 8px;
     font-size: 13px;
@@ -33,12 +33,12 @@ body {
 }
 
 #info-panel .info-label {
-    color: #aaa;
+    color: #444;
     font-size: 11px;
 }
 
 #info-panel .info-value {
-    color: #fff;
+    color: #000;
     font-weight: 500;
 }
 
@@ -105,7 +105,7 @@ body {
     top: 10px;
     right: 10px;
     background: rgba(128, 128, 128, 0.6);
-    color: #fff;
+    color: #000;
     padding: 12px 16px;
     border-radius: 8px;
     font-size: 12px;
