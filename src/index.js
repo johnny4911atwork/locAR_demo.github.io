@@ -155,7 +155,7 @@ function snapToGrid(value, precision) {
 
 // 創建單個格子
 function createGridCell(lon, lat) {
-    const size = 10;
+    const size = 11;
     const geom = new THREE.PlaneGeometry(size, size);
     
     // 計算這個位置的訊號強度
