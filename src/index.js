@@ -46,7 +46,7 @@ window.addEventListener("resize", ev => {
 // GPS 追蹤狀態
 let lastUpdateLon = null;
 let lastUpdateLat = null;
-const UPDATE_THRESHOLD_METERS = 5;
+const UPDATE_THRESHOLD_METERS = 3;
 let firstLocation = true;
 
 // 儲存當前的格子 - key 是實際經緯度字串
@@ -96,62 +96,54 @@ function createGridCell() {
 // 更新對齊到經緯度格點的網格
 function updateAlignedGrid(userLon, userLat) {
     console.log(`User at: ${userLon.toFixed(6)}, ${userLat.toFixed(6)}`);
-
+    
     // 找到用戶所在的網格點
     const centerLon = snapToGrid(userLon, GRID_PRECISION);
     const centerLat = snapToGrid(userLat, GRID_PRECISION);
-
+    
     console.log(`Snapped to: ${centerLon.toFixed(6)}, ${centerLat.toFixed(6)}`);
-
+    
     const gridStep = 1 / Math.pow(10, GRID_PRECISION); // 每格的度數
     const requiredCells = new Set();
-
-    const added = [];
-
+    
     // 生成周圍的網格點
     for (let latStep = -GRID_RANGE; latStep <= GRID_RANGE; latStep++) {
         for (let lonStep = -GRID_RANGE; lonStep <= GRID_RANGE; lonStep++) {
             const gridLon = centerLon + (lonStep * gridStep);
             const gridLat = centerLat + (latStep * gridStep);
-
+            
             // 用精確到小數點的經緯度作為 key
             const key = `${gridLon.toFixed(GRID_PRECISION)},${gridLat.toFixed(GRID_PRECISION)}`;
             requiredCells.add(key);
-
+            
             // 如果這個網格點還沒有格子,創建它
             if (!gridCells.has(key)) {
                 const mesh = createGridCell();
                 locar.add(mesh, gridLon, gridLat);
-
+                
                 gridCells.set(key, {
                     mesh: mesh,
                     lon: gridLon,
                     lat: gridLat
                 });
-
-                added.push(key);
+                
+                console.log(`Added cell at ${key}`);
             }
         }
     }
-
+    
     // 移除太遠的格子
-    const removed = [];
     for (const [key, cellData] of gridCells.entries()) {
         if (!requiredCells.has(key)) {
             scene.remove(cellData.mesh);
             cellData.mesh.geometry.dispose();
             cellData.mesh.material.dispose();
             gridCells.delete(key);
-            removed.push(key);
+            console.log(`Removed cell ${key}`);
         }
     }
-
-    if (added.length) console.log(`Added ${added.length} cell(s):`, added);
-    if (removed.length) console.log(`Removed ${removed.length} cell(s):`, removed);
-
+    
     console.log(`Grid now has ${gridCells.size} cells (${Math.pow(GRID_RANGE * 2 + 1, 2)} expected)`);
-
-    return { centerLon, centerLat, added, removed };
 }
 
 // GPS 更新處理
@@ -166,24 +158,20 @@ locar.on("gpsupdate", ev => {
     // 第一次獲取位置
     if (firstLocation) {
         alert(`GPS 啟動!\n經度: ${lon.toFixed(6)}\n緯度: ${lat.toFixed(6)}\n網格精度: ${GRID_PRECISION} 位`);
-        const res = updateAlignedGrid(lon, lat);
+        updateAlignedGrid(lon, lat);
         lastUpdateLon = lon;
         lastUpdateLat = lat;
         firstLocation = false;
-        console.log(`Initial grid centered at ${res.centerLon.toFixed(6)}, ${res.centerLat.toFixed(6)}`);
         return;
     }
-
+    
     // 計算移動距離
     const distance = calculateDistance(lastUpdateLon, lastUpdateLat, lon, lat);
-
+    
     // 移動超過閾值才更新
     if (distance > UPDATE_THRESHOLD_METERS) {
         console.log(`Moved ${distance.toFixed(2)}m - updating grid`);
-        const res = updateAlignedGrid(lon, lat);
-        console.log(`Moved from ${lastUpdateLon.toFixed(6)},${lastUpdateLat.toFixed(6)} to ${lon.toFixed(6)},${lat.toFixed(6)}`);
-        if (res.added.length) console.log('Added cells:', res.added);
-        if (res.removed.length) console.log('Removed cells:', res.removed);
+        updateAlignedGrid(lon, lat);
         lastUpdateLon = lon;
         lastUpdateLat = lat;
     }
@@ -197,32 +185,19 @@ document.getElementById("setFakeLoc")?.addEventListener("click", e => {
     const fakeLat = parseFloat(document.getElementById("fakeLat").value);
     
     alert(`使用假 GPS: ${fakeLon}, ${fakeLat}`);
-
+    
     locar.stopGps();
-
-    // 記錄舊的中心（若有）
-    const oldCenter = (lastUpdateLon !== null && lastUpdateLat !== null)
-        ? `${lastUpdateLon.toFixed(6)},${lastUpdateLat.toFixed(6)}`
-        : null;
-
-    // 清空現有格子（並列出已移除的 key）
-    const removedKeys = [];
+    
+    // 清空現有格子
     for (const [key, cellData] of gridCells.entries()) {
         scene.remove(cellData.mesh);
         cellData.mesh.geometry.dispose();
         cellData.mesh.material.dispose();
-        removedKeys.push(key);
     }
     gridCells.clear();
-
-    if (removedKeys.length) console.log('Cleared existing cells:', removedKeys);
-
+    
     locar.fakeGps(fakeLon, fakeLat);
-    const res = updateAlignedGrid(fakeLon, fakeLat);
-    console.log(`Fake GPS moved${oldCenter ? ` from ${oldCenter}` : ''} to ${res.centerLon.toFixed(6)},${res.centerLat.toFixed(6)}`);
-    if (res.added.length) console.log('Added cells after fake move:', res.added);
-    if (res.removed.length) console.log('Removed cells after fake move:', res.removed);
-
+    updateAlignedGrid(fakeLon, fakeLat);
     lastUpdateLon = fakeLon;
     lastUpdateLat = fakeLat;
 });
