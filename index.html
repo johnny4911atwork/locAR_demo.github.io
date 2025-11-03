@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-<script type="module" src="src/index.js"></script>
+<script type="module" src="index.js"></script>
 <script src="//cdn.jsdelivr.net/npm/eruda"></script>
 <script>eruda.init();</script>
 <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, minimum-scale=1, maximum-scale=1" />
-<title>AR 訊號覆蓋圖</title>
-<link rel="stylesheet" href="src/style.css">
+<title>LocAR.js example 2</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 <main>
@@ -27,7 +27,7 @@
     </div>
     <div id="grid-status">網格數量: <span id="grid-count">0</span></div>
     
-    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.2);">
+    <div class="info-section">
         <div class="info-title" style="font-size: 13px; margin-bottom: 6px;">📶 當前訊號</div>
         <div class="info-item">
             <span class="info-label">訊號強度:</span>
@@ -101,8 +101,3 @@
 </main>
 </body>
 </html>
-
-
-
-
-
