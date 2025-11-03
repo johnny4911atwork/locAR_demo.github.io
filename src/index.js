@@ -54,16 +54,15 @@ const gridCells = new Map();
 
 // 網格配置
 const GRID_PRECISION = 4; // 小數點後幾位 (4 = 0.0001 度 ≈ 11米)
-const GRID_RANGE = 3; // 顯示周圍多少格
+const GRID_RANGE = 5; // 顯示周圍多少格
 
 // 假基地台資料 (台北市附近)
 const BASE_STATIONS = [
     { name: "台北車站基地台", lon: 121.5170, lat: 25.0478, power: 100 },
     { name: "101大樓基地台", lon: 121.5654, lat: 25.0340, power: 120 },
-    { name: "士林基地台", lon: 121.5260, lat: 25.0880, power: 90 },
     { name: "西門町基地台", lon: 121.5070, lat: 25.0420, power: 100 },
     { name: "信義區基地台", lon: 121.5700, lat: 25.0330, power: 110 },
-    { name: "測試基地台#1", lon: 121.5425, lat: 25.0330, power: 100 }
+    { name: "測試基地台#1", lon: 121.5425, lat: 25.0330, power: 80 }
 ];
 
 // 計算訊號強度 (根據距離衰減)
