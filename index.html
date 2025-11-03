@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<script type="module" src="src/index.js"></script>
+<script type="module" src="index.js"></script>
 <script src="//cdn.jsdelivr.net/npm/eruda"></script>
 <script>eruda.init();</script>
 <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, minimum-scale=1, maximum-scale=1" />
@@ -101,6 +101,67 @@ body {
 #gpsinput button:active {
     background: #00cc6f;
 }
+
+#base-stations {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.75);
+    color: #fff;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    max-width: 250px;
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+#base-stations .info-title {
+    font-weight: bold;
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #ff6b6b;
+}
+
+#base-stations .station-item {
+    margin: 6px 0;
+    padding: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    font-size: 11px;
+}
+
+#base-stations .station-name {
+    font-weight: 500;
+    color: #ffcc00;
+}
+
+#base-stations .station-coords {
+    color: #aaa;
+    font-size: 10px;
+}
+
+.signal-legend {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.signal-legend .legend-item {
+    display: flex;
+    align-items: center;
+    margin: 4px 0;
+    font-size: 11px;
+}
+
+.signal-legend .color-box {
+    width: 20px;
+    height: 12px;
+    margin-right: 8px;
+    border-radius: 2px;
+}
+
 </style>
 </head>
 <body>
@@ -123,6 +184,48 @@ body {
     <div id="grid-status">網格數量: <span id="grid-count">0</span></div>
 </div>
 
+<div id="base-stations">
+    <div class="info-title">📡 基地台位置</div>
+    <div class="station-item">
+        <div class="station-name">台北車站</div>
+        <div class="station-coords">121.5170, 25.0478</div>
+    </div>
+    <div class="station-item">
+        <div class="station-name">101大樓</div>
+        <div class="station-coords">121.5654, 25.0340</div>
+    </div>
+    <div class="station-item">
+        <div class="station-name">士林</div>
+        <div class="station-coords">121.5260, 25.0880</div>
+    </div>
+    <div class="station-item">
+        <div class="station-name">西門町</div>
+        <div class="station-coords">121.5070, 25.0420</div>
+    </div>
+    <div class="station-item">
+        <div class="station-name">信義區</div>
+        <div class="station-coords">121.5700, 25.0330</div>
+    </div>
+    <div class="signal-legend">
+        <div class="legend-item">
+            <div class="color-box" style="background: #00ff00;"></div>
+            <span>強 (90+)</span>
+        </div>
+        <div class="legend-item">
+            <div class="color-box" style="background: #ffff00;"></div>
+            <span>中 (50-90)</span>
+        </div>
+        <div class="legend-item">
+            <div class="color-box" style="background: #ff0000;"></div>
+            <span>弱 (10-50)</span>
+        </div>
+        <div class="legend-item">
+            <div class="color-box" style="background: #660000;"></div>
+            <span>無 (&lt;10)</span>
+        </div>
+    </div>
+</div>
+
 <div id="gpsinput">
 <div><input id="fakeLat" placeholder="Fake Lat" /></div>
 <div><input id="fakeLon" placeholder="Fake Lon"/></div>
@@ -134,4 +237,3 @@ body {
 </main>
 </body>
 </html>
-
