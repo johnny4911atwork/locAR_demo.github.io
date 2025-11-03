@@ -154,7 +154,7 @@ function updateAlignedGrid(userLon, userLat) {
     console.log(`目前網格有 ${gridCells.size} 個格子（預期 ${Math.pow(GRID_RANGE * 2 + 1, 2)} 個）`);
     
     // 更新前端顯示
-    updateInfoPanel(userLon, userLat, centerLon, centerLat, gridCells.size);
+    //updateInfoPanel(userLon, userLat, centerLon, centerLat, gridCells.size);
 }
 
 // GPS 更新處理
@@ -165,6 +165,11 @@ locar.on("gpserror", error => {
 locar.on("gpsupdate", ev => {
     const lon = ev.position.coords.longitude;
     const lat = ev.position.coords.latitude;
+    
+    // 即時更新前端顯示的經緯度
+    const centerLon = snapToGrid(lon, GRID_PRECISION);
+    const centerLat = snapToGrid(lat, GRID_PRECISION);
+    updateInfoPanel(lon, lat, centerLon, centerLat, gridCells.size);
     
     // 第一次獲取位置
     if (firstLocation) {
@@ -179,9 +184,9 @@ locar.on("gpsupdate", ev => {
     // 計算移動距離
     const distance = calculateDistance(lastUpdateLon, lastUpdateLat, lon, lat);
     
-    // 移動超過閾值才更新
+    // 移動超過閾值才更新網格
     if (distance > UPDATE_THRESHOLD_METERS) {
-    console.log(`移動了 ${distance.toFixed(2)} 公尺，更新網格中`);
+        console.log(`移動了 ${distance.toFixed(2)} 公尺，更新網格中`);
         updateAlignedGrid(lon, lat);
         lastUpdateLon = lon;
         lastUpdateLat = lat;
