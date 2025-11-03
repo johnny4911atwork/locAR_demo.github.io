@@ -9,7 +9,7 @@ body {
     position: fixed;
     top: 10px;
     left: 10px;
-    background: rgba(0, 0, 0, 0.75);
+    background: rgba(128, 128, 128, 0.6);
     color: #fff;
     padding: 12px 16px;
     border-radius: 8px;
@@ -50,12 +50,18 @@ body {
     color: #00ff88;
 }
 
+.info-section {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
 #gpsinput {
     position: fixed;
     bottom: 10px;
     left: 10px;
     z-index: 1000;
-    background: rgba(0, 0, 0, 0.75);
+    background: rgba(128, 128, 128, 0.6);
     padding: 12px;
     border-radius: 8px;
     backdrop-filter: blur(10px);
@@ -98,7 +104,7 @@ body {
     position: fixed;
     top: 10px;
     right: 10px;
-    background: rgba(0, 0, 0, 0.75);
+    background: rgba(128, 128, 128, 0.6);
     color: #fff;
     padding: 12px 16px;
     border-radius: 8px;
