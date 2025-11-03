@@ -153,3 +153,11 @@ body {
     margin-right: 8px;
     border-radius: 2px;
 }
+
+/* Legend color classes that align with index.js getColorForSignal */
+.color-strong { background: #00ff00; }    /* >=90 */
+.color-high   { background: #66ff00; }    /* 70-89 */
+.color-medium { background: #ffff00; }    /* 50-69 */
+.color-orange { background: #ff9900; }    /* 30-49 */
+.color-weak   { background: #ff0000; }    /* 10-29 */
+.color-none   { background: #660000; }    /* <10 */
