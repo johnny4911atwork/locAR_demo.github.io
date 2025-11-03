@@ -74,13 +74,13 @@ body {
     border: 1px solid #444;
     border-radius: 6px;
     background: rgba(255, 255, 255, 0.1);
-    color: #fff;
+    color: #000;
     font-size: 13px;
     width: 180px;
 }
 
 #gpsinput input::placeholder {
-    color: #888;
+    color: #666;
 }
 
 #gpsinput button {
@@ -160,7 +160,6 @@ body {
     border-radius: 2px;
 }
 
-/* Legend color classes that align with index.js getColorForSignal */
 .color-strong { background: #00ff00; }    /* >=90 */
 .color-high   { background: #66ff00; }    /* 70-89 */
 .color-medium { background: #ffff00; }    /* 50-69 */
