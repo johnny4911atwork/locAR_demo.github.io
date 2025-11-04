@@ -77,12 +77,39 @@ const gridCells = new Map();
 const GRID_PRECISION = 4; // 小數點後幾位 (4 = 0.0001 度 ≈ 11米)
 const GRID_RANGE = 6; // 顯示周圍多少格
 
+// ========== 優化 A：共用 Geometry 和 Material 快取 ==========
+// 預先創建共用的圓形 Geometry（避免每次都新建）
+const geometryCache = {
+    5.5: new THREE.CircleGeometry(5.5, 32),
+    4.75: new THREE.CircleGeometry(4.75, 32),
+    4: new THREE.CircleGeometry(4, 32),
+    3.25: new THREE.CircleGeometry(3.25, 32),
+    2.5: new THREE.CircleGeometry(2.5, 32),
+    1: new THREE.CircleGeometry(1, 32)
+};
+
+// 快取 Material（依顏色快取，避免重複建立）
+const materialCache = new Map();
+
+function getMaterialForColor(color) {
+    if (!materialCache.has(color)) {
+        materialCache.set(color, new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.6,
+            side: THREE.DoubleSide
+        }));
+    }
+    return materialCache.get(color);
+}
+// =========================================================
+
 // 假基地台資料 (台北市附近)
 const BASE_STATIONS = [
     { name: "台北車站基地台", lon: 121.5170, lat: 25.0478, power: 100 },
     { name: "101大樓基地台", lon: 121.5654, lat: 25.0340, power: 120 },
     { name: "西門町基地台", lon: 121.5070, lat: 25.0420, power: 100 },
-    { name: "測試基地台#1", lon: 121.5425, lat: 25.0330, power: 84.5 }
+    { name: "測試基地台#1", lon: 121.5425, lat: 25.0330, power: 83.75 }
 ];
 
 // 計算訊號強度 (根據距離衰減)
@@ -198,15 +225,15 @@ function createGridCell(lon, lat) {
     // 依顏色/強度區間決定圓形半徑（離散級距）
     const radius = getRadiusForSignal(signalInfo.strength);
     
-    // 使用 CircleGeometry 建立圓形 (半徑, 分段數)
-    const geom = new THREE.CircleGeometry(radius, 32);
+    // 如果半徑為 0，不建立 mesh（無訊號，不畫圓）
+    if (radius === 0) {
+        return null;
+    }
     
-    const mat = new THREE.MeshBasicMaterial({ 
-        color: color,
-        transparent: true,
-        opacity: 0.6,
-        side: THREE.DoubleSide
-    });
+    // 使用共用的 Geometry 和 Material（優化 A）
+    const geom = geometryCache[radius];
+    const mat = getMaterialForColor(color);
+    
     const mesh = new THREE.Mesh(geom, mat);
     mesh.rotation.x = -Math.PI / 2;
     
@@ -286,15 +313,19 @@ function updateAlignedGrid(userLon, userLat) {
             // 如果這個網格點還沒有格子,創建它
             if (!gridCells.has(key)) {
                 const mesh = createGridCell(gridLon, gridLat);
-                locar.add(mesh, gridLon, gridLat);
                 
-                gridCells.set(key, {
-                    mesh: mesh,
-                    lon: gridLon,
-                    lat: gridLat
-                });
-                
-                console.log(`已新增格子: ${key}, 訊號強度: ${mesh.userData.signalStrength}, 最近基地台: ${mesh.userData.nearestStation}`);
+                // 只有當 mesh 不為 null 時才加入場景（強度為 0 不畫圓）
+                if (mesh !== null) {
+                    locar.add(mesh, gridLon, gridLat);
+                    
+                    gridCells.set(key, {
+                        mesh: mesh,
+                        lon: gridLon,
+                        lat: gridLat
+                    });
+                    
+                    console.log(`已新增格子: ${key}, 訊號強度: ${mesh.userData.signalStrength}, 最近基地台: ${mesh.userData.nearestStation}`);
+                }
             }
         }
     }
