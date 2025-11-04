@@ -179,12 +179,12 @@ function snapToGrid(value, precision) {
 // 根據 strength 區間回傳半徑（公尺）
 function getRadiusForSignal(strength) {
     // 與顏色分級對應：綠色最大、深紅最小
-    if (strength >= 90) return 1.0; // 綠色
-    else if (strength >= 70) return 0.8; // 淺綠
-    else if (strength >= 50) return 0.6; // 黃色
-    else if (strength >= 30) return 0.4; // 橙色
-    else if (strength >= 10) return 0.2; // 紅色
-    else return 0; // 深紅
+    if (strength >= 90) return 0.3; // 綠色
+    else if (strength >= 70) return 0.25; // 淺綠
+    else if (strength >= 50) return 0.2; // 黃色
+    else if (strength >= 30) return 0.15; // 橙色
+    else if (strength >= 10) return 0.1; // 紅色
+    else return 0; // 深紅(不畫出來)
 }
 
 // 創建單個格子
