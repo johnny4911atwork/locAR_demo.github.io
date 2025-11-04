@@ -153,13 +153,20 @@ function snapToGrid(value, precision) {
     return Math.round(value * factor) / factor;
 }
 
-// 創建單個格子（size 以公尺為單位，預設保留向後相容）
-function createGridCell(lon, lat, sizeMeters = 10.5) {
-    const geom = new THREE.PlaneGeometry(sizeMeters, sizeMeters);
-    
+// 創建單個格子
+function createGridCell(lon, lat) {
     // 計算這個位置的訊號強度
     const signalInfo = calculateSignalStrength(lon, lat);
     const color = getColorForSignal(signalInfo.strength);
+    
+    // 根據訊號強度決定圓形大小
+    // 訊號範圍 0-120，映射到半徑 2-15 公尺
+    const minRadius = 2;
+    const maxRadius = 15;
+    const radius = minRadius + (signalInfo.strength / 120) * (maxRadius - minRadius);
+    
+    // 使用 CircleGeometry 建立圓形 (半徑, 分段數)
+    const geom = new THREE.CircleGeometry(radius, 32);
     
     const mat = new THREE.MeshBasicMaterial({ 
         color: color,
@@ -174,7 +181,8 @@ function createGridCell(lon, lat, sizeMeters = 10.5) {
     mesh.userData = {
         signalStrength: signalInfo.strength.toFixed(2),
         nearestStation: signalInfo.station?.name || 'None',
-        distance: signalInfo.distance.toFixed(0)
+        distance: signalInfo.distance.toFixed(0),
+        radius: radius.toFixed(2)
     };
     
     return mesh;
@@ -230,31 +238,21 @@ function updateAlignedGrid(userLon, userLat) {
     console.log(`對齊到格點: ${centerLon.toFixed(6)}, ${centerLat.toFixed(6)}`);
     
     const gridStep = 1 / Math.pow(10, GRID_PRECISION); // 每格的度數
-    const R = 6371000; // 和 calculateDistance 相同的地球半徑 (公尺)
-    const metersPerDeg = R * Math.PI / 180; // 每一度約多少公尺（緯度方向）
     const requiredCells = new Set();
     
     // 生成周圍的網格點
     for (let latStep = -GRID_RANGE; latStep <= GRID_RANGE; latStep++) {
         for (let lonStep = -GRID_RANGE; lonStep <= GRID_RANGE; lonStep++) {
-            // 使用每一列的緯度來計算經度度數的實際公尺長度，並依此調整經度步長
+            const gridLon = centerLon + (lonStep * gridStep);
             const gridLat = centerLat + (latStep * gridStep);
-            const latRad = gridLat * Math.PI / 180;
-            // 經度每度的公尺長度 = metersPerDeg * cos(lat)
-            // 要讓每格經度在公尺上和緯度一致，將經度度數步長放大 1 / cos(lat)
-            const lonDegreeStepAtLat = gridStep / Math.cos(latRad);
-            const gridLon = centerLon + (lonStep * lonDegreeStepAtLat);
             
             // 用精確到小數點的經緯度作為 key
             const key = `${gridLon.toFixed(GRID_PRECISION)},${gridLat.toFixed(GRID_PRECISION)}`;
             requiredCells.add(key);
             
-            // 每格實際的公尺大小（以緯度方向的度數轉換為公尺）
-            const cellSizeMeters = gridStep * metersPerDeg;
-
             // 如果這個網格點還沒有格子,創建它
             if (!gridCells.has(key)) {
-                const mesh = createGridCell(gridLon, gridLat, cellSizeMeters);
+                const mesh = createGridCell(gridLon, gridLat);
                 locar.add(mesh, gridLon, gridLat);
                 
                 gridCells.set(key, {
