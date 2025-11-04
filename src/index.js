@@ -74,15 +74,15 @@ let smoothedLat = null;
 const gridCells = new Map();
 
 // 網格配置
-const GRID_PRECISION = 4; // 小數點後幾位 (5 = 0.00001 度 ≈ 1.1米)
-const GRID_RANGE = 10; // 顯示周圍多少格
+const GRID_PRECISION = 4; // 小數點後幾位 (4 = 0.0001 度 ≈ 11米)
+const GRID_RANGE = 6; // 顯示周圍多少格
 
 // 假基地台資料 (台北市附近)
 const BASE_STATIONS = [
     { name: "台北車站基地台", lon: 121.5170, lat: 25.0478, power: 100 },
     { name: "101大樓基地台", lon: 121.5654, lat: 25.0340, power: 120 },
     { name: "西門町基地台", lon: 121.5070, lat: 25.0420, power: 100 },
-    { name: "測試基地台#1", lon: 121.5425, lat: 25.0330, power: 85 }
+    { name: "測試基地台#1", lon: 121.5425, lat: 25.0330, power: 80 }
 ];
 
 // 計算訊號強度 (根據距離衰減)
@@ -179,11 +179,11 @@ function snapToGrid(value, precision) {
 // 根據 strength 區間回傳半徑（公尺）
 function getRadiusForSignal(strength) {
     // 與顏色分級對應：綠色最大、深紅最小
-    if (strength >= 90) return 2; // 綠色
-    else if (strength >= 70) return 1.6; // 淺綠
-    else if (strength >= 50) return 1.2; // 黃色
-    else if (strength >= 30) return 0.8; // 橙色
-    else if (strength >= 10) return 0.4; // 紅色
+    if (strength >= 90) return 5; // 綠色
+    else if (strength >= 70) return 4; // 淺綠
+    else if (strength >= 50) return 3; // 黃色
+    else if (strength >= 30) return 2; // 橙色
+    else if (strength >= 10) return 1; // 紅色
     else return 0.1; // 深紅
 }
 
