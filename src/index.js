@@ -61,7 +61,7 @@ window.addEventListener("resize", ev => {
 // GPS 追蹤狀態
 let lastUpdateLon = null;
 let lastUpdateLat = null;
-const UPDATE_THRESHOLD_METERS = 2;
+const UPDATE_THRESHOLD_METERS = 3;
 let firstLocation = true;
 
 // GPS 平滑化設定 (解決室內漂移問題)
