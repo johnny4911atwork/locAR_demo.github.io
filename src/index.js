@@ -4,7 +4,7 @@ import * as LocAR from 'https://esm.sh/locar';
 // 建立相機 (PerspectiveCamera)
 const camera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 0.1, 1000);
 // 將相機放在接近使用者眼睛的高度 (m)
-camera.position.set(0, 1.6, 0);
+camera.position.set(0, 1.7, 0);
 
 // 建立 WebGL renderer，並指定要使用的 canvas 元素
 const renderer = new THREE.WebGLRenderer({
