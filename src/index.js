@@ -82,7 +82,7 @@ const BASE_STATIONS = [
     { name: "台北車站基地台", lon: 121.5170, lat: 25.0478, power: 100 },
     { name: "101大樓基地台", lon: 121.5654, lat: 25.0340, power: 120 },
     { name: "西門町基地台", lon: 121.5070, lat: 25.0420, power: 100 },
-    { name: "測試基地台#1", lon: 121.5425, lat: 25.0330, power: 80 }
+    { name: "測試基地台#1", lon: 121.5425, lat: 25.0330, power: 85 }
 ];
 
 // 計算訊號強度 (根據距離衰減)
@@ -184,7 +184,7 @@ function getRadiusForSignal(strength) {
     else if (strength >= 50) return 1.2; // 黃色
     else if (strength >= 30) return 0.8; // 橙色
     else if (strength >= 10) return 0.4; // 紅色
-    else return 0; // 深紅(不畫出來)
+    else return 0.1; // 深紅
 }
 
 // 創建單個格子
