@@ -75,10 +75,9 @@ const gridCells = new Map();
 
 // 網格配置
 const GRID_PRECISION = 4; // 小數點後幾位 (4 = 0.0001 度 ≈ 11米)
-const GRID_RANGE = 6; // 顯示周圍多少格
+const GRID_RANGE = 7; // 顯示周圍多少格
 
-// ========== 優化 A：共用 Geometry 和 Material 快取 ==========
-// 預先創建共用的圓形 Geometry（避免每次都新建）
+// 預先創建共用的圓形 Geometry
 const geometryCache = {
     5.5: new THREE.CircleGeometry(5.5, 32),
     4.75: new THREE.CircleGeometry(4.75, 32),
@@ -230,7 +229,7 @@ function createGridCell(lon, lat) {
         return null;
     }
     
-    // 使用共用的 Geometry 和 Material（優化 A）
+    // 使用共用的 Geometry 和 Material
     const geom = geometryCache[radius];
     const mat = getMaterialForColor(color);
     
