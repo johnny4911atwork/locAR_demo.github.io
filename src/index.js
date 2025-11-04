@@ -64,6 +64,12 @@ let lastUpdateLat = null;
 const UPDATE_THRESHOLD_METERS = 1;
 let firstLocation = true;
 
+// GPS 平滑化設定 (解決室內漂移問題)
+const GPS_HISTORY_SIZE = 5; // 保留最近 5 次 GPS 位置
+const gpsHistory = [];
+let smoothedLon = null;
+let smoothedLat = null;
+
 // 儲存當前的格子 - key 是實際經緯度字串
 const gridCells = new Map();
 
@@ -145,6 +151,23 @@ function calculateDistance(lon1, lat1, lon2, lat2) {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
     return R * c;
+}
+
+// GPS 平滑化函數 (移動平均，減少室內漂移)
+function smoothGPS(lon, lat) {
+    // 加入新的 GPS 位置
+    gpsHistory.push({ lon, lat });
+    
+    // 保持歷史記錄在指定大小內
+    if (gpsHistory.length > GPS_HISTORY_SIZE) {
+        gpsHistory.shift();
+    }
+    
+    // 計算平均值
+    const avgLon = gpsHistory.reduce((sum, pos) => sum + pos.lon, 0) / gpsHistory.length;
+    const avgLat = gpsHistory.reduce((sum, pos) => sum + pos.lat, 0) / gpsHistory.length;
+    
+    return { lon: avgLon, lat: avgLat };
 }
 
 // 將經緯度對齊到網格點
@@ -289,13 +312,18 @@ locar.on("gpserror", error => {
 });
 
 locar.on("gpsupdate", ev => {
-    const lon = ev.position.coords.longitude;
-    const lat = ev.position.coords.latitude;
+    const rawLon = ev.position.coords.longitude;
+    const rawLat = ev.position.coords.latitude;
     
-    // 即時更新前端顯示的經緯度
+    // 使用 GPS 平滑化 (移動平均) 來減少室內漂移
+    const smoothed = smoothGPS(rawLon, rawLat);
+    const lon = smoothed.lon;
+    const lat = smoothed.lat;
+    
+    // 即時更新前端顯示的經緯度 (顯示原始值)
     const centerLon = snapToGrid(lon, GRID_PRECISION);
     const centerLat = snapToGrid(lat, GRID_PRECISION);
-    updateInfoPanel(lon, lat, centerLon, centerLat, gridCells.size);
+    updateInfoPanel(rawLon, rawLat, centerLon, centerLat, gridCells.size);
     
     // 第一次獲取位置
     if (firstLocation) {
@@ -303,11 +331,13 @@ locar.on("gpsupdate", ev => {
         updateAlignedGrid(lon, lat);
         lastUpdateLon = lon;
         lastUpdateLat = lat;
+        smoothedLon = lon;
+        smoothedLat = lat;
         firstLocation = false;
         return;
     }
     
-    // 計算移動距離
+    // 計算與上次更新位置的距離 (使用平滑後的座標)
     const distance = calculateDistance(lastUpdateLon, lastUpdateLat, lon, lat);
     
     // 移動超過閾值才更新網格
@@ -316,6 +346,8 @@ locar.on("gpsupdate", ev => {
         updateAlignedGrid(lon, lat);
         lastUpdateLon = lon;
         lastUpdateLat = lat;
+        smoothedLon = lon;
+        smoothedLat = lat;
     }
 });
 
