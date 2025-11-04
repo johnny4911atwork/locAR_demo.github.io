@@ -61,7 +61,7 @@ window.addEventListener("resize", ev => {
 // GPS 追蹤狀態
 let lastUpdateLon = null;
 let lastUpdateLat = null;
-const UPDATE_THRESHOLD_METERS = 5;
+const UPDATE_THRESHOLD_METERS = 1;
 let firstLocation = true;
 
 // 儲存當前的格子 - key 是實際經緯度字串
@@ -69,7 +69,7 @@ const gridCells = new Map();
 
 // 網格配置
 const GRID_PRECISION = 5; // 小數點後幾位 (5 = 0.00001 度 ≈ 1.1米)
-const GRID_RANGE = 5; // 顯示周圍多少格
+const GRID_RANGE = 10; // 顯示周圍多少格
 
 // 假基地台資料 (台北市附近)
 const BASE_STATIONS = [
