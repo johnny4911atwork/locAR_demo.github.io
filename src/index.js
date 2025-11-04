@@ -181,10 +181,10 @@ function getRadiusForSignal(strength) {
     // 與顏色分級對應：綠色最大、深紅最小
     // 調整尺寸避免重疊（網格間距 11m，最大直徑 11m）
     if (strength >= 90) return 5.5; // 綠色 (直徑 11m，剛好不重疊)
-    else if (strength >= 70) return 4.8; // 淺綠
-    else if (strength >= 50) return 4.2; // 黃色
-    else if (strength >= 30) return 3.6; // 橙色
-    else if (strength >= 10) return 3.0; // 紅色
+    else if (strength >= 70) return 4.75; // 淺綠
+    else if (strength >= 50) return 4; // 黃色
+    else if (strength >= 30) return 3.25; // 橙色
+    else if (strength >= 10) return 2.5; // 紅色
     else if (strength > 0) return 1; // 深紅 (最小)
     else return 0; // 強度為 0，不畫圓
 }
