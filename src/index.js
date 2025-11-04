@@ -68,7 +68,7 @@ let firstLocation = true;
 const gridCells = new Map();
 
 // 網格配置
-const GRID_PRECISION = 4; // 小數點後幾位 (4 = 0.0001 度 ≈ 11米)
+const GRID_PRECISION = 5; // 小數點後幾位 (5 = 0.00001 度 ≈ 1.1米)
 const GRID_RANGE = 5; // 顯示周圍多少格
 
 // 假基地台資料 (台北市附近)
@@ -160,9 +160,9 @@ function createGridCell(lon, lat) {
     const color = getColorForSignal(signalInfo.strength);
     
     // 根據訊號強度決定圓形大小
-    // 訊號範圍 0-120，映射到半徑 2-15 公尺
-    const minRadius = 2;
-    const maxRadius = 15;
+    // 訊號範圍 0-120，映射到半徑 0.3-1.2 公尺
+    const minRadius = 0.3;
+    const maxRadius = 1.2;
     const radius = minRadius + (signalInfo.strength / 120) * (maxRadius - minRadius);
     
     // 使用 CircleGeometry 建立圓形 (半徑, 分段數)
