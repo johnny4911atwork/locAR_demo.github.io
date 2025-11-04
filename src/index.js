@@ -176,17 +176,25 @@ function snapToGrid(value, precision) {
     return Math.round(value * factor) / factor;
 }
 
+// 根據 strength 區間回傳半徑（公尺）
+function getRadiusForSignal(strength) {
+    // 與顏色分級對應：綠色最大、深紅最小
+    if (strength >= 90) return 1.2; // 綠色
+    else if (strength >= 70) return 0.9; // 淺綠
+    else if (strength >= 50) return 0.6; // 黃色
+    else if (strength >= 30) return 0.3; // 橙色
+    else if (strength >= 10) return 0.1; // 紅色
+    else return 0; // 深紅
+}
+
 // 創建單個格子
 function createGridCell(lon, lat) {
     // 計算這個位置的訊號強度
     const signalInfo = calculateSignalStrength(lon, lat);
     const color = getColorForSignal(signalInfo.strength);
     
-    // 根據訊號強度決定圓形大小
-    // 訊號範圍 0-120，映射到半徑 0.3-1.2 公尺
-    const minRadius = 0.3;
-    const maxRadius = 1.2;
-    const radius = minRadius + (signalInfo.strength / 120) * (maxRadius - minRadius);
+    // 依顏色/強度區間決定圓形半徑（離散級距）
+    const radius = getRadiusForSignal(signalInfo.strength);
     
     // 使用 CircleGeometry 建立圓形 (半徑, 分段數)
     const geom = new THREE.CircleGeometry(radius, 32);
