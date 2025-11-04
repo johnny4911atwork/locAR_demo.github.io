@@ -4,7 +4,7 @@ import * as LocAR from 'https://esm.sh/locar';
 // 建立相機 (PerspectiveCamera)
 const camera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 0.1, 1000);
 // 將相機放在接近使用者眼睛的高度 (m)
-camera.position.set(0, 1.6, 0);
+camera.position.set(0, 1.7, 0);
 
 // 建立 WebGL renderer，並指定要使用的 canvas 元素
 const renderer = new THREE.WebGLRenderer({
@@ -65,7 +65,7 @@ const UPDATE_THRESHOLD_METERS = 1.5;
 let firstLocation = true;
 
 // GPS 平滑化設定 (解決室內漂移問題)
-const GPS_HISTORY_SIZE = 5; // 保留最近 5 次 GPS 位置
+const GPS_HISTORY_SIZE = 10; // 保留最近 10 次 GPS 位置
 const gpsHistory = [];
 let smoothedLon = null;
 let smoothedLat = null;
@@ -82,7 +82,7 @@ const BASE_STATIONS = [
     { name: "台北車站基地台", lon: 121.5170, lat: 25.0478, power: 100 },
     { name: "101大樓基地台", lon: 121.5654, lat: 25.0340, power: 120 },
     { name: "西門町基地台", lon: 121.5070, lat: 25.0420, power: 100 },
-    { name: "測試基地台#1", lon: 121.5425, lat: 25.0330, power: 80 }
+    { name: "測試基地台#1", lon: 121.5495, lat: 25.0330, power: 85 }
 ];
 
 // 計算訊號強度 (根據距離衰減)
