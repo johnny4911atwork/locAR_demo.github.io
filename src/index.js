@@ -61,7 +61,7 @@ window.addEventListener("resize", ev => {
 // GPS 追蹤狀態
 let lastUpdateLon = null;
 let lastUpdateLat = null;
-const UPDATE_THRESHOLD_METERS = 1.5;
+const UPDATE_THRESHOLD_METERS = 3;
 let firstLocation = true;
 
 // GPS 平滑化設定 (解決室內漂移問題)
@@ -74,7 +74,7 @@ let smoothedLat = null;
 const gridCells = new Map();
 
 // 網格配置
-const GRID_PRECISION = 5; // 小數點後幾位 (5 = 0.00001 度 ≈ 1.1米)
+const GRID_PRECISION = 4; // 小數點後幾位 (5 = 0.00001 度 ≈ 1.1米)
 const GRID_RANGE = 10; // 顯示周圍多少格
 
 // 假基地台資料 (台北市附近)
@@ -179,11 +179,11 @@ function snapToGrid(value, precision) {
 // 根據 strength 區間回傳半徑（公尺）
 function getRadiusForSignal(strength) {
     // 與顏色分級對應：綠色最大、深紅最小
-    if (strength >= 90) return 0.3; // 綠色
-    else if (strength >= 70) return 0.25; // 淺綠
-    else if (strength >= 50) return 0.2; // 黃色
-    else if (strength >= 30) return 0.15; // 橙色
-    else if (strength >= 10) return 0.1; // 紅色
+    if (strength >= 90) return 2; // 綠色
+    else if (strength >= 70) return 1.6; // 淺綠
+    else if (strength >= 50) return 1.2; // 黃色
+    else if (strength >= 30) return 0.8; // 橙色
+    else if (strength >= 10) return 0.4; // 紅色
     else return 0; // 深紅(不畫出來)
 }
 
